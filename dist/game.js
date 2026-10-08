@@ -10,8 +10,12 @@
   const W = canvas.width, H = canvas.height;
   const backgroundArt = new Image();
   const olegSprites = new Image();
+  const upperCatchSprites = new Image();
+  const emotionSprites = new Image();
   backgroundArt.src = 'assets/lcd-background.png';
   olegSprites.src = 'assets/oleg-sprites.png';
+  upperCatchSprites.src = 'assets/oleg-upper-catch-v2.png';
+  emotionSprites.src = 'assets/oleg-emotions-v2.png';
 
   const lanes = [
     [[150,120],[295,180],[390,258],[455,343]],
@@ -93,6 +97,13 @@
 
   function oleg(){
     if(!olegSprites.complete||!olegSprites.naturalWidth){sadOleg();return}
+    const upperIncoming=game.items.filter(item=>item.lane===game.lane&&(item.lane===0||item.lane===2)&&item.progress>.4).sort((a,b)=>b.progress-a.progress)[0];
+    if(upperCatchSprites.complete&&upperCatchSprites.naturalWidth&&(upperIncoming||game.reaction==='catch'&&game.catchAnim?.upper)){
+      const sw=upperCatchSprites.naturalWidth/6,sh=upperCatchSprites.naturalHeight;
+      const frame=game.reaction==='catch'?Math.min(5,3+Math.floor(game.reactionClock/260)):Math.min(2,Math.floor((upperIncoming.progress-.4)/.12));
+      const height=350,width=height*(sw/sh),flip=game.lane<2;
+      ctx.save();if(flip){ctx.translate(960,0);ctx.scale(-1,1)}ctx.drawImage(upperCatchSprites,frame*sw,0,sw,sh,480-width/2,235,width,height);ctx.restore();return;
+    }
     let pose=0;
     if(game.reaction==='catch')pose=game.catchAnim?.upper?1:2;
     if(game.reaction==='miss')pose=3;
@@ -107,6 +118,20 @@
     if(flip){ctx.translate(960,0);ctx.scale(-1,1)}
     ctx.drawImage(olegSprites,pose*sw,0,sw,sh,dx,dy,width,height);
     ctx.restore();
+  }
+
+  function emotionPortrait(){
+    if(!emotionSprites.complete||!emotionSprites.naturalWidth||game.reaction==='gameover')return;
+    const danger=game.items.reduce((best,item)=>item.progress>(best?.progress||0)?item:best,null);
+    let frame=-1;
+    if(game.reaction==='catch')frame=game.score%3===0?4:3;
+    else if(game.reaction==='miss')frame=6;
+    else if(danger?.progress>.7)frame=2;
+    else if(danger?.progress>.43)frame=1;
+    if(frame<0)return;
+    const sw=emotionSprites.naturalWidth/8,sh=emotionSprites.naturalHeight,w=112,h=112*(sh/sw);
+    const pop=game.reaction==='catch'||game.reaction==='miss'?Math.min(1,game.reactionClock/120):1;
+    ctx.save();ctx.globalAlpha=.9;ctx.translate(480,155);ctx.scale(pop,pop);ctx.drawImage(emotionSprites,frame*sw,0,sw,sh,-w/2,-h/2,w,h);ctx.restore();
   }
 
   function sadOleg(){
@@ -145,7 +170,7 @@
   }
 
   function draw(dt=16){
-    ctx.clearRect(0,0,W,H);background();game.items.forEach(startup);caughtBox();oleg();effects(dt);hud();
+    ctx.clearRect(0,0,W,H);background();game.items.forEach(startup);caughtBox();oleg();emotionPortrait();effects(dt);hud();
     if(game.paused){ctx.fillStyle='rgba(155,170,120,.78)';ctx.fillRect(260,235,440,115);ctx.fillStyle=ink();ctx.textAlign='center';ctx.font='900 46px monospace';ctx.fillText('ПАУЗА',480,305)}
     gameStatus.textContent=`Счёт ${game.score}, жизни ${game.lives}, ${game.message}`;
   }
