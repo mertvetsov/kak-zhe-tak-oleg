@@ -27,7 +27,8 @@
   const balconyBack = new Image();
   const balconyFrontUp = new Image();
   const balconyFrontDown = new Image();
-  const specialItemSprites = new Image();
+  const toxicItemSprites = new Image();
+  const unicornItemSprites = new Image();
   const danceFrames = Array.from({length:8},()=>new Image());
   backgroundArt.src = 'assets/lcd-background-no-houses-user-v8.png';
   olegSprites.src = 'assets/oleg-sprites.png';
@@ -35,7 +36,7 @@
   emotionSprites.src = 'assets/oleg-emotions-v2.png';
   directionalSprites.src = 'assets/oleg-four-directions-v3.png';
   missedSprite.src = 'assets/oleg-missed-v3.png';
-  boxFlightSprites.src = 'assets/startup-box-flight-v3.png';
+  boxFlightSprites.src = 'assets/startup-box-flight-v4.png';
   userLeftLow.src = 'assets/oleg-left-low-user-v4.png';
   userLeftLowBox.src = 'assets/oleg-left-low-caught-user-v4.png';
   userLeftUp.src = 'assets/oleg-left-up-user-v4.png';
@@ -46,10 +47,11 @@
   balconyBack.src = 'assets/balcony-back-two-floor-user-v9.png';
   balconyFrontUp.src = 'assets/balcony-front-up-user-v9.png';
   balconyFrontDown.src = 'assets/balcony-front-down-user-v9.png';
-  specialItemSprites.src = 'assets/special-items-v1.png';
+  toxicItemSprites.src = 'assets/toxic-box-flight-v2.png';
+  unicornItemSprites.src = 'assets/unicorn-flight-v2.png';
   danceFrames.forEach((image,i)=>image.src=`assets/oleg-dance-${String(i+1).padStart(2,'0')}-v1.png`);
 
-  const allAssets = [backgroundArt,olegSprites,upperCatchSprites,emotionSprites,directionalSprites,missedSprite,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown,specialItemSprites,...danceFrames];
+  const allAssets = [backgroundArt,olegSprites,upperCatchSprites,emotionSprites,directionalSprites,missedSprite,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,...danceFrames];
   let assetsReady=false,loadedAssets=0;
   const trackAsset=image=>new Promise(resolve=>{
     const done=ok=>{loadedAssets++;overlayStatus.textContent=`${loadedAssets} / ${allAssets.length}`;resolve(ok)};
@@ -73,10 +75,17 @@
     [1095,21,250,653],[1370,66,248,633],[1640,67,250,607],[1910,118,252,555]
   ];
   const boxFrames = [
-    [15,45,337,566],[373,89,341,601],[734,93,340,543],
-    [1097,103,341,492],[1457,120,331,548],[1821,116,328,477]
+    [29,248,286,205],[380,234,264,224],[704,241,296,203],
+    [1053,237,264,228],[1367,240,289,232],[1726,240,294,215]
   ];
-  const SPECIAL_FRAME_SIZE = 362;
+  const toxicFrames = [
+    [29,256,275,193],[350,244,333,221],[683,238,341,258],
+    [1024,229,342,283],[1366,232,341,298],[1707,255,313,277]
+  ];
+  const unicornFrames = [
+    [23,252,319,227],[342,179,341,332],[683,145,306,353],
+    [1043,199,323,303],[1366,216,341,293],[1707,240,311,262]
+  ];
   const DANCE_CROPS = [
     [117,254,243,423],[73,192,289,485],[154,253,187,415],[95,200,289,472],
     [57,251,300,420],[141,250,193,427],[120,246,247,433],[117,285,249,395]
@@ -269,11 +278,13 @@
     if(boxFlightSprites.complete&&boxFlightSprites.naturalWidth){const src=boxFrames[frame%6],maxSide=Math.max(src[2],src[3]),dw=144*scale*(src[2]/maxSide),dh=144*scale*(src[3]/maxSide);ctx.drawImage(boxFlightSprites,...src,x-dw/2,y-dh/2,dw,dh);return}
   }
   function specialItem(x,y,type,scale=1,frame=0,mirror=false){
-    if(!specialItemSprites.complete||!specialItemSprites.naturalWidth)return;
-    const row=type==='unicorn'?1:0,size=(type==='toxic'?168:148)*scale;
+    const image=type==='unicorn'?unicornItemSprites:toxicItemSprites;
+    if(!image.complete||!image.naturalWidth)return;
+    const frames=type==='unicorn'?unicornFrames:toxicFrames,src=frames[Math.min(5,frame)],size=(type==='toxic'?168:148)*scale;
+    const maxSide=Math.max(src[2],src[3]),dw=size*(src[2]/maxSide),dh=size*(src[3]/maxSide);
     ctx.save();ctx.translate(x,y);if(mirror)ctx.scale(-1,1);
     if(type==='unicorn'){ctx.shadowColor='#f3ce4d';ctx.shadowBlur=10}
-    ctx.drawImage(specialItemSprites,Math.min(5,frame)*SPECIAL_FRAME_SIZE,row*SPECIAL_FRAME_SIZE,SPECIAL_FRAME_SIZE,SPECIAL_FRAME_SIZE,-size/2,-size/2,size,size);
+    ctx.drawImage(image,...src,-dw/2,-dh/2,dw,dh);
     ctx.restore();
   }
   function drawItem(x,y,item,scale=1,frame=0,rotation=Math.sin(item.progress*18)*.16){
