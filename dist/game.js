@@ -40,10 +40,10 @@
   balconyFront.src = 'assets/balcony-front-user-v8.png';
 
   const lanes = [
-    [[150,120],[295,180],[390,258],[455,343]],
-    [[150,285],[300,315],[400,350],[455,385]],
-    [[810,120],[665,180],[570,258],[505,343]],
-    [[810,285],[660,315],[560,350],[505,385]],
+    [[205,145],[310,155],[400,235],[455,320]],
+    [[205,145],[315,235],[405,335],[455,390]],
+    [[755,145],[650,155],[560,235],[505,320]],
+    [[755,145],[645,235],[555,335],[505,390]],
   ];
   const directionFrames = [
     [16,101,250,573],[285,37,250,635],[550,33,255,637],[825,71,250,601],
@@ -92,17 +92,13 @@
 
   function drawMirroredLayer(image){
     if(!image.complete||!image.naturalWidth)return;
-    const width=H*(image.naturalWidth/image.naturalHeight);
-    ctx.drawImage(image,0,0,width,H);
-    ctx.save();ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,0,0,width,H);ctx.restore();
+    const offset=-8,width=H*(image.naturalWidth/image.naturalHeight)+8;
+    ctx.drawImage(image,offset,0,width,H);
+    ctx.save();ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,offset,0,width,H);ctx.restore();
   }
 
   function balconyForeground(){
     drawMirroredLayer(balconyFront);
-    ctx.save();ctx.fillStyle=ink();ctx.font='900 29px sans-serif';ctx.textAlign='center';
-    ctx.save();ctx.translate(90,222);ctx.rotate(.055);ctx.fillText('ИНВЕСТОР',0,0);ctx.restore();
-    ctx.save();ctx.translate(W-90,222);ctx.rotate(-.055);ctx.fillText('ИНВЕСТОР',0,0);ctx.restore();
-    ctx.restore();
   }
 
   function animatedInvestors(){
@@ -112,7 +108,7 @@
       const frame=timer<100?0:timer<230?1:timer<360?2:timer<480?3:timer<610?4:timer<750?5:timer<880?6:0;
       const image=investorFrames[frame],dw=240,dh=199,dy=25;
       ctx.save();
-      if(side===1){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,-240,dy,dw,dh)}
+      if(side===1){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,-6,dy,dw,dh)}
       else ctx.drawImage(image,-6,dy,dw,dh);
       ctx.restore();
     }
@@ -267,7 +263,7 @@
     const spawnEvery=game.mode==='A'?Math.max(780,1700-rounds*18):Math.max(480,1050-rounds*12);
     const cap=game.mode==='A'?1:2;
     if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap&&!game.items.some(item=>item.progress>.45)){spawnClock=0;const occupied=new Set(game.items.map(item=>item.lane<2?0:1)),free=[0,1].filter(side=>!occupied.has(side)),side=free.length?free[Math.floor(Math.random()*free.length)]:Math.floor(Math.random()*2),lane=side*2+Math.floor(Math.random()*2);game.items.push({id:id++,lane,progress:0,age:0,label:labels[id%labels.length]});game.throwTimers[side]=0}
-    const survivors=[];for(const item of game.items){item.age+=dt;item.progress+=dt*speed;if(item.lane===game.lane&&item.progress>=CATCH_PROGRESS)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
+    const survivors=[];for(const item of game.items){item.age+=dt;if(item.age>=750)item.progress+=dt*speed;if(item.lane===game.lane&&item.progress>=CATCH_PROGRESS)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
   }
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
