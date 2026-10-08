@@ -70,7 +70,7 @@
 
   function fresh(mode){
     const firstActor=Math.random()<.5?0:1;
-    return { running:false, paused:false, mode, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'ВЫБЕРИ ИГРУ', fragments:[], sparks:[], tears:[], catchAnim:null, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor, playTime:0, streak:0, hypeGoal:3+Math.floor(Math.random()*4), nextHypeAt:10000+Math.random()*5000, hypeText:'', hypeClock:0 };
+    return { running:false, paused:false, mode, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'ВЫБЕРИ ИГРУ', fragments:[], sparks:[], tears:[], catchAnim:null, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor, playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0 };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -164,7 +164,7 @@
   }
 
   function oleg(){
-    if(!olegSprites.complete||!olegSprites.naturalWidth){sadOleg();return}
+    if(!olegSprites.complete||!olegSprites.naturalWidth)return;
     if(game.reaction==='miss'&&userLeftDropped.complete&&userLeftDropped.naturalWidth){
       drawUserOleg(userLeftDropped,[28,245,344,440],game.missLane>=2,0);return;
     }
@@ -222,7 +222,6 @@
 
   function startupBox(x,y,label,rotation=0,scale=1,frame=0){
     if(boxFlightSprites.complete&&boxFlightSprites.naturalWidth){const src=boxFrames[frame%6],maxSide=Math.max(src[2],src[3]),dw=144*scale*(src[2]/maxSide),dh=144*scale*(src[3]/maxSide);ctx.drawImage(boxFlightSprites,...src,x-dw/2,y-dh/2,dw,dh);return}
-    ctx.save();ctx.translate(x,y);ctx.rotate(rotation);ctx.scale(scale,scale);ctx.fillStyle=lcd();ctx.strokeStyle=ink();ctx.lineWidth=6;roundRect(-30,-24,60,48,3,true,true);line(-30,-8,30,-8,3);line(-12,-23,-12,-8,3);line(13,-23,13,-8,3);ctx.fillStyle=ink();ctx.font='900 13px monospace';ctx.textAlign='center';ctx.fillText(label,0,13);ctx.restore();
   }
   function startup(item){
     if(item.age<item.releaseAt)return;
@@ -274,24 +273,24 @@
   function catchItem(item){
     const [x,y]=pathPoint(item.lane,ease(item.progress));
     game.score+=game.mode==='A'?100:200;game.reaction='catch';game.reactionClock=0;game.catchAnim={lane:item.lane,upper:item.lane===0||item.lane===2,label:item.label,x,y,t:0,rotation:Math.sin(item.progress*18)*.16};
-    game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`;game.streak++;
-    if(game.playTime>=game.nextHypeAt&&game.streak>=game.hypeGoal){game.hypeText=hypeLines[Math.floor(Math.random()*hypeLines.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+10000+Math.random()*5000;game.hypeGoal=3+Math.floor(Math.random()*4);game.streak=0}
+    game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`;
     celebrate();beep('catch');
   }
   function missItem(item){
-    game.lives--;game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';game.streak=0;smash(item.lane);beep('miss');if(game.lives<=0){game.lives=0;game.running=false;game.reaction='gameover';game.message='GAME OVER · А/Б — РЕВАНШ';beep('over')}
+    game.lives--;game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';smash(item.lane);beep('miss');if(game.lives<=0){game.lives=0;game.running=false;game.reaction='gameover';game.message='GAME OVER · А/Б — РЕВАНШ';beep('over')}
   }
 
   function update(dt){
     if(!game.running||game.paused)return;
     game.playTime+=dt;if(game.hypeText)game.hypeClock+=dt;
+    if(game.playTime>=game.nextHypeAt){game.hypeText=hypeLines[Math.floor(Math.random()*hypeLines.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+6000+Math.random()*4000;celebrate()}
     game.throwTimers.forEach((timer,lane)=>game.throwTimers[lane]=timer+dt);
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;if((game.reaction==='catch'&&game.reactionClock>900)||(game.reaction==='miss'&&game.reactionClock>1050)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`}
-    const rounds=game.score/100;
-    const speed=(game.mode==='A'?.000135:.000195)+Math.min(.00008,rounds*.000002);spawnClock+=dt;
-    const spawnEvery=game.mode==='A'?Math.max(780,1700-rounds*18):Math.max(480,1050-rounds*12);
-    const cap=game.mode==='A'?1:2;
-    if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap&&!game.items.some(item=>item.progress>.45)){
+    const progress=clamp(game.playTime/180000,0,1),ramp=progress*progress*(3-2*progress);
+    const speed=game.mode==='A'?.00012+ramp*.00012:.000175+ramp*.000165;spawnClock+=dt;
+    const spawnEvery=game.mode==='A'?1600-ramp*1000:1050-ramp*670;
+    const cap=game.mode==='A'?(game.playTime>60000?2:1):(game.playTime>120000?4:game.playTime>45000?3:2);
+    if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap){
       spawnClock=0;
       const occupied=new Set(game.items.map(item=>item.lane)),free=[0,1,2,3].filter(lane=>!occupied.has(lane)&&game.throwTimers[lane]>=900),pool=free.length?free:[0,1,2,3].filter(lane=>!occupied.has(lane));
       const lane=pool[Math.floor(Math.random()*pool.length)],actor=1-game.lastActor,releaseAt=actor===0?750:720;
@@ -310,6 +309,6 @@
   modeButtons.forEach(b=>b.addEventListener('click',()=>start(b.dataset.mode)));
   pauseButton.addEventListener('click',pause);
   soundButton.addEventListener('click',()=>{sound=!sound;soundButton.textContent=`ЗВУК: ${sound?'ВКЛ':'ВЫКЛ'}`;soundButton.setAttribute('aria-pressed',String(sound));if(sound)beep('move')});
-  addEventListener('keydown',e=>{const m={q:0,a:1,e:2,d:3};let lane=m[e.key.toLowerCase()];if(e.key==='ArrowLeft')lane=game.lane<2?game.lane:game.lane-2;if(e.key==='ArrowRight')lane=game.lane<2?game.lane+2:game.lane;if(e.key==='ArrowUp')lane=game.lane<2?0:2;if(e.key==='ArrowDown')lane=game.lane<2?1:3;if(e.key===' '){e.preventDefault();pause()}else if(lane!==undefined){e.preventDefault();choose(lane)}});
+  addEventListener('keydown',e=>{let lane;if(e.key==='ArrowLeft')lane=game.lane<2?game.lane:game.lane-2;if(e.key==='ArrowRight')lane=game.lane<2?game.lane+2:game.lane;if(e.key==='ArrowUp')lane=game.lane<2?0:2;if(e.key==='ArrowDown')lane=game.lane<2?1:3;if(e.key===' '){e.preventDefault();pause()}else if(lane!==undefined){e.preventDefault();choose(lane)}});
   requestAnimationFrame(frame);
 })();

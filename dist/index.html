@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#d7c49f">
   <meta name="description" content="Ретро LCD-игра про Олега, инвесторов и стартапы">
   <title>Как же так, Олег — LCD-игра</title>
-  <link rel="stylesheet" href="styles.css?v=18">
+  <link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
   <main class="page">
@@ -19,8 +19,8 @@
 
       <div class="game-layout">
         <div class="controls controls-left">
-          <button class="round" data-lane="0" aria-label="Левая верхняя траектория"><kbd>Q</kbd><span>↖</span></button>
-          <button class="round" data-lane="1" aria-label="Левая нижняя траектория"><kbd>A</kbd><span>↙</span></button>
+          <button class="round" data-lane="0" aria-label="Левая верхняя траектория"></button>
+          <button class="round" data-lane="1" aria-label="Левая нижняя траектория"></button>
         </div>
 
         <div class="screen-wrap">
@@ -32,8 +32,8 @@
         </div>
 
         <div class="controls controls-right">
-          <button class="round" data-lane="2" aria-label="Правая верхняя траектория"><kbd>E</kbd><span>↗</span></button>
-          <button class="round" data-lane="3" aria-label="Правая нижняя траектория"><kbd>D</kbd><span>↘</span></button>
+          <button class="round" data-lane="2" aria-label="Правая верхняя траектория"></button>
+          <button class="round" data-lane="3" aria-label="Правая нижняя траектория"></button>
         </div>
       </div>
 
@@ -46,11 +46,11 @@
         <button id="sound" class="small-button" aria-pressed="true">ЗВУК: ВКЛ</button>
       </div>
 
-      <p class="instructions">Мышь / касание · Q A E D · стрелки · пробел — пауза</p>
+      <p class="instructions">Клик / касание по красным кнопкам · ← → — сторона · ↑ ↓ — высота · пробел — пауза</p>
       <output id="game-status" class="sr-only" aria-live="polite">Счёт 0, жизни 3, выберите режим</output>
       <div class="speaker" aria-hidden="true">••••••••••••</div>
     </section>
   </main>
-  <script src="game.js?v=18"></script>
+  <script src="game.js?v=19"></script>
 </body>
 </html>
