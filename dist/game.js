@@ -44,10 +44,10 @@
   balconyFrontDown.src = 'assets/balcony-front-down-user-v9.png';
 
   const lanes = [
-    [[305,145],[365,170],[425,235],[455,315]],
-    [[305,370],[370,360],[430,385],[455,405]],
-    [[655,145],[595,170],[535,235],[505,315]],
-    [[655,370],[590,360],[530,385],[505,405]],
+    [[235,145],[335,170],[415,235],[455,315]],
+    [[235,365],[340,360],[420,385],[455,405]],
+    [[725,145],[625,170],[545,235],[505,315]],
+    [[725,365],[620,360],[540,385],[505,405]],
   ];
   const directionFrames = [
     [16,101,250,573],[285,37,250,635],[550,33,255,637],[825,71,250,601],
@@ -58,13 +58,19 @@
     [1097,103,341,492],[1457,120,331,548],[1821,116,328,477]
   ];
   const labels = ['AI','SaaS','WEB3','B2B','APP','$'];
+  const hypeLines = [
+    'ЕДЕМ В ЕДИНОРОГИ!','МАСШТАБИРУЕМСЯ!','РАУНД ЗАКРЫТ!',
+    'ЮНИТ-ЭКОНОМИКА СОШЛАСЬ!','ПОШЁЛ ТРЕКШН!','ХОККЕЙНАЯ КЛЮШКА!',
+    'PRODUCT–MARKET FIT!','ИНВЕСТОР В ВОСТОРГЕ!','X10 К ОЦЕНКЕ!',
+    'ЭТО УЖЕ НЕ MVP!','СЖИГАЕМ КЭШ!','ПИВОТИМ!','СИНЕРГИЯ!','DISRUPT!'
+  ];
   const CATCH_PROGRESS = .44;
   let game = fresh('A');
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
   function fresh(mode){
     const firstActor=Math.random()<.5?0:1;
-    return { running:false, paused:false, mode, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'ВЫБЕРИ ИГРУ', fragments:[], sparks:[], tears:[], catchAnim:null, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor };
+    return { running:false, paused:false, mode, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'ВЫБЕРИ ИГРУ', fragments:[], sparks:[], tears:[], catchAnim:null, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor, playTime:0, streak:0, hypeGoal:3+Math.floor(Math.random()*4), nextHypeAt:10000+Math.random()*5000, hypeText:'', hypeClock:0 };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -111,9 +117,9 @@
       const frame=actor===0
         ? (timer<100?0:timer<230?1:timer<360?2:timer<480?3:timer<610?4:timer<750?5:6)
         : (timer<100?0:timer<250?1:timer<400?2:timer<550?3:timer<720?4:5);
-      const image=frames[frame],dw=330,dh=274,dy=floor===0?0:315,side=lane>=2;
+      const image=frames[frame],dw=220,dh=183,dy=floor===0?30:270,side=lane>=2;
       ctx.save();
-      if(side===1){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,-6,dy,dw,dh)}
+      if(side){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,-6,dy,dw,dh)}
       else ctx.drawImage(image,-6,dy,dw,dh);
       ctx.restore();
     }
@@ -236,8 +242,13 @@
   function hud(){
     ctx.fillStyle=ink();ctx.textAlign='right';ctx.font='900 54px monospace';ctx.fillText('$'+String(game.score).padStart(3,'0'),805,78);
     for(let i=0;i<3;i++){const x=235+i*40;ctx.beginPath();ctx.moveTo(x,74);ctx.bezierCurveTo(x-18,58,x-31,82,x,107);ctx.bezierCurveTo(x+31,82,x+18,58,x,74);if(i<game.lives)ctx.fill();else ctx.stroke()}
-    ctx.textAlign='center';ctx.font='900 22px monospace';ctx.fillText(game.message,480,575);
+    ctx.textAlign='center';
     if(game.reaction==='catch'&&game.reactionClock<500){ctx.font='900 34px monospace';ctx.fillText('+$'+(game.mode==='A'?100:200),480,210-game.reactionClock*.05)}
+    if(game.hypeText&&game.hypeClock<1800){
+      const fade=game.hypeClock<1400?1:(1800-game.hypeClock)/400;
+      let size=30;ctx.font=`900 ${size}px monospace`;while(ctx.measureText(game.hypeText).width>570&&size>18){size--;ctx.font=`900 ${size}px monospace`}
+      ctx.save();ctx.globalAlpha=clamp(fade,0,1);ctx.fillStyle=ink();ctx.fillText(game.hypeText,480,270-Math.min(22,game.hypeClock*.025));ctx.restore();
+    }
   }
 
   function draw(dt=16){
@@ -259,14 +270,17 @@
   function catchItem(item){
     const [x,y]=pathPoint(item.lane,ease(item.progress));
     game.score+=game.mode==='A'?100:200;game.reaction='catch';game.reactionClock=0;game.catchAnim={lane:item.lane,upper:item.lane===0||item.lane===2,label:item.label,x,y,t:0,rotation:Math.sin(item.progress*18)*.16};
-    game.message=item.lane===0||item.lane===2?'ВЕРХНЯЯ ЛОВЛЯ!':['СХВАТИЛ!','ЕСТЬ РАУНД!','В ДЕКЕ!','НЕ ПРОСРАЛ!'][(game.score/100)%4];celebrate();beep('catch');
+    game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`;game.streak++;
+    if(game.playTime>=game.nextHypeAt&&game.streak>=game.hypeGoal){game.hypeText=hypeLines[Math.floor(Math.random()*hypeLines.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+10000+Math.random()*5000;game.hypeGoal=3+Math.floor(Math.random()*4);game.streak=0}
+    celebrate();beep('catch');
   }
   function missItem(item){
-    game.lives--;game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';smash(item.lane);beep('miss');if(game.lives<=0){game.lives=0;game.running=false;game.reaction='gameover';game.message='GAME OVER · А/Б — РЕВАНШ';beep('over')}
+    game.lives--;game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';game.streak=0;smash(item.lane);beep('miss');if(game.lives<=0){game.lives=0;game.running=false;game.reaction='gameover';game.message='GAME OVER · А/Б — РЕВАНШ';beep('over')}
   }
 
   function update(dt){
     if(!game.running||game.paused)return;
+    game.playTime+=dt;if(game.hypeText)game.hypeClock+=dt;
     game.throwTimers.forEach((timer,lane)=>game.throwTimers[lane]=timer+dt);
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;if((game.reaction==='catch'&&game.reactionClock>900)||(game.reaction==='miss'&&game.reactionClock>1050)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`}
     const rounds=game.score/100;
