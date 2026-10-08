@@ -103,6 +103,7 @@
   const CATCH_START = .44;
   const CATCH_END = .72;
   const TOXIC_REJECT_END = .52;
+  const ITEM_RENDER_SIZE = 96;
   let game = fresh('A');
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
@@ -277,7 +278,7 @@
 
   function spriteFrame(image,frames,frame,x,y,scale=1,mirror=false,loop=false,glow=false){
     if(!image.complete||!image.naturalWidth)return;
-    const src=frames[loop?frame%frames.length:Math.min(frames.length-1,frame)],maxSide=Math.max(src[2],src[3]),size=144*scale,dw=size*(src[2]/maxSide),dh=size*(src[3]/maxSide);
+    const src=frames[loop?frame%frames.length:Math.min(frames.length-1,frame)],reference=frames[0],referenceScale=ITEM_RENDER_SIZE/Math.max(reference[2],reference[3]),areaScale=Math.sqrt((reference[2]*reference[3])/(src[2]*src[3])),dw=src[2]*referenceScale*areaScale*scale,dh=src[3]*referenceScale*areaScale*scale;
     ctx.save();ctx.translate(x,y);if(mirror)ctx.scale(-1,1);if(glow){ctx.shadowColor='#f3ce4d';ctx.shadowBlur=10}ctx.drawImage(image,...src,-dw/2,-dh/2,dw,dh);ctx.restore();
   }
   function startupBox(x,y,label,rotation=0,scale=1,frame=0){
