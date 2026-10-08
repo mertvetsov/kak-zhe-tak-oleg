@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#d7c49f">
   <meta name="description" content="Ретро LCD-игра про Олега, инвесторов и стартапы">
   <title>Как же так, Олег — LCD-игра</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <main class="page">
@@ -47,9 +47,10 @@
       </div>
 
       <p class="instructions">Мышь / касание · Q A E D · стрелки · пробел — пауза</p>
+      <output id="game-status" class="sr-only" aria-live="polite">Счёт 0, жизни 3, выберите режим</output>
       <div class="speaker" aria-hidden="true">••••••••••••</div>
     </section>
   </main>
-  <script src="game.js"></script>
+  <script src="game.js?v=5"></script>
 </body>
 </html>
