@@ -48,6 +48,7 @@
     [1097,103,341,492],[1457,120,331,548],[1821,116,328,477]
   ];
   const labels = ['AI','SaaS','WEB3','B2B','APP','$'];
+  const CATCH_PROGRESS = .44;
   let game = fresh('A');
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
@@ -228,7 +229,7 @@
     const spawnEvery=game.mode==='A'?Math.max(780,1700-game.score*18):Math.max(480,1050-game.score*12);
     const cap=game.mode==='A'?1:2;
     if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap&&!game.items.some(item=>item.progress>.45)){spawnClock=0;game.items.push({id:id++,lane:Math.floor(Math.random()*4),progress:0,label:labels[id%labels.length]})}
-    const survivors=[];for(const item of game.items){item.progress+=dt*speed;if(item.lane===game.lane&&item.progress>=.72)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
+    const survivors=[];for(const item of game.items){item.progress+=dt*speed;if(item.lane===game.lane&&item.progress>=CATCH_PROGRESS)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
   }
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
