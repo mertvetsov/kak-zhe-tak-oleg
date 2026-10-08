@@ -44,10 +44,10 @@
   balconyFrontDown.src = 'assets/balcony-front-down-user-v9.png';
 
   const lanes = [
-    [[245,145],[335,165],[415,235],[455,315]],
-    [[245,365],[340,355],[420,375],[455,405]],
-    [[715,145],[625,165],[545,235],[505,315]],
-    [[715,365],[620,355],[540,375],[505,405]],
+    [[305,145],[365,170],[425,235],[455,315]],
+    [[305,370],[370,360],[430,385],[455,405]],
+    [[655,145],[595,170],[535,235],[505,315]],
+    [[655,370],[590,360],[530,385],[505,405]],
   ];
   const directionFrames = [
     [16,101,250,573],[285,37,250,635],[550,33,255,637],[825,71,250,601],
@@ -102,13 +102,8 @@
     ctx.save();ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,offset,0,width,H);ctx.restore();
   }
 
-  function balconyForeground(){
-    drawMirroredLayer(balconyFrontUp);
-    drawMirroredLayer(balconyFrontDown);
-  }
-
-  function animatedInvestors(){
-    for(let lane=0;lane<4;lane++){
+  function animatedInvestors(floor){
+    for(const lane of floor===0?[0,2]:[1,3]){
       const timer=game.throwTimers[lane],actor=game.throwActors[lane];
       if(timer>=900||actor<0)continue;
       const frames=actor===0?investorFrames:investorFrames2;
@@ -116,7 +111,7 @@
       const frame=actor===0
         ? (timer<100?0:timer<230?1:timer<360?2:timer<480?3:timer<610?4:timer<750?5:6)
         : (timer<100?0:timer<250?1:timer<400?2:timer<550?3:timer<720?4:5);
-      const image=frames[frame],dw=240,dh=199,dy=lane%2===0?25:245,side=lane>=2;
+      const image=frames[frame],dw=330,dh=274,dy=floor===0?0:315,side=lane>=2;
       ctx.save();
       if(side===1){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,-6,dy,dw,dh)}
       else ctx.drawImage(image,-6,dy,dw,dh);
@@ -246,7 +241,13 @@
   }
 
   function draw(dt=16){
-    ctx.clearRect(0,0,W,H);background();animatedInvestors();balconyForeground();game.items.forEach(startup);caughtBox();oleg();effects(dt);hud();
+    ctx.clearRect(0,0,W,H);
+    background();
+    animatedInvestors(0);
+    drawMirroredLayer(balconyFrontUp);
+    animatedInvestors(1);
+    drawMirroredLayer(balconyFrontDown);
+    game.items.forEach(startup);caughtBox();oleg();effects(dt);hud();
     if(game.paused){ctx.fillStyle='rgba(155,170,120,.78)';ctx.fillRect(260,235,440,115);ctx.fillStyle=ink();ctx.textAlign='center';ctx.font='900 46px monospace';ctx.fillText('ПАУЗА',480,305)}
     gameStatus.textContent=`Счёт $${game.score}, жизни ${game.lives}, ${game.message}`;
   }
@@ -269,7 +270,7 @@
     game.throwTimers.forEach((timer,lane)=>game.throwTimers[lane]=timer+dt);
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;if((game.reaction==='catch'&&game.reactionClock>900)||(game.reaction==='miss'&&game.reactionClock>1050)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`}
     const rounds=game.score/100;
-    const speed=(game.mode==='A'?.000115:.00017)+Math.min(.00008,rounds*.000002);spawnClock+=dt;
+    const speed=(game.mode==='A'?.000135:.000195)+Math.min(.00008,rounds*.000002);spawnClock+=dt;
     const spawnEvery=game.mode==='A'?Math.max(780,1700-rounds*18):Math.max(480,1050-rounds*12);
     const cap=game.mode==='A'?1:2;
     if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap&&!game.items.some(item=>item.progress>.45)){
