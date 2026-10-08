@@ -29,6 +29,7 @@
   const balconyFrontDown = new Image();
   const toxicItemSprites = new Image();
   const unicornItemSprites = new Image();
+  const cryingSprites = new Image();
   const danceFrames = Array.from({length:8},()=>new Image());
   backgroundArt.src = 'assets/lcd-background-no-houses-user-v8.png';
   olegSprites.src = 'assets/oleg-sprites.png';
@@ -49,9 +50,10 @@
   balconyFrontDown.src = 'assets/balcony-front-down-user-v9.png';
   toxicItemSprites.src = 'assets/toxic-box-flight-v2.png';
   unicornItemSprites.src = 'assets/unicorn-flight-v2.png';
+  cryingSprites.src = 'assets/oleg-crying-v1.png';
   danceFrames.forEach((image,i)=>image.src=`assets/oleg-dance-${String(i+1).padStart(2,'0')}-v1.png`);
 
-  const allAssets = [backgroundArt,olegSprites,upperCatchSprites,emotionSprites,directionalSprites,missedSprite,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,...danceFrames];
+  const allAssets = [backgroundArt,olegSprites,upperCatchSprites,emotionSprites,directionalSprites,missedSprite,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,cryingSprites,...danceFrames];
   let assetsReady=false,loadedAssets=0;
   const trackAsset=image=>new Promise(resolve=>{
     const done=ok=>{loadedAssets++;overlayStatus.textContent=`${loadedAssets} / ${allAssets.length}`;resolve(ok)};
@@ -86,6 +88,10 @@
     [47,80,247,181],[398,55,228,231],[761,42,184,257],
     [1078,79,233,183],[1418,74,236,193],[1765,71,224,199]
   ];
+  const CRYING_CROPS = [
+    [67,40,122,175],[321,43,126,170],[578,44,124,168],[835,39,121,178],
+    [1089,37,125,181],[1346,44,123,167],[1602,46,124,163],[1856,40,128,175]
+  ];
   const DANCE_CROPS = [
     [117,254,243,423],[73,192,289,485],[154,253,187,415],[95,200,289,472],
     [57,251,300,420],[141,250,193,427],[120,246,247,433],[117,285,249,395]
@@ -103,7 +109,7 @@
   const CATCH_START = .44;
   const CATCH_END = .72;
   const TOXIC_REJECT_END = .52;
-  const ITEM_RENDER_SIZE = 64;
+  const ITEM_RENDER_SIZE = 80;
   let game = fresh('A');
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
@@ -216,6 +222,10 @@
 
   function oleg(){
     if(!olegSprites.complete||!olegSprites.naturalWidth)return;
+    if(game.reaction==='gameover'&&cryingSprites.complete&&cryingSprites.naturalWidth){
+      const frame=Math.floor(performance.now()/170)%CRYING_CROPS.length,src=CRYING_CROPS[frame],height=210,width=height*(src[2]/src[3]);
+      ctx.drawImage(cryingSprites,...src,480-width/2,552-height,width,height);return;
+    }
     if(game.reaction==='dance'&&danceFrames.every(image=>image.complete&&image.naturalWidth)){
       const frame=Math.min(danceFrames.length-1,Math.floor(game.reactionClock/130)),image=danceFrames[frame],src=DANCE_CROPS[frame];
       const height=270,width=height*(src[2]/src[3]);
@@ -321,6 +331,15 @@
     game.poopBurst.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=.0005*dt;p.rot+=p.vr*dt;p.life-=dt;drawPoop(p)});game.poopBurst=game.poopBurst.filter(p=>p.life>0&&p.y<H+40);
   }
 
+  function gameoverDollarDrift(){
+    if(game.reaction!=='gameover')return;
+    const t=performance.now()*.001;
+    for(let i=0;i<5;i++){
+      const travel=(t*.16+i/5)%1,side=i%2?-1:1,x=480+side*(52+travel*65)+Math.sin(t*1.5+i)*7,y=500-travel*205;
+      ctx.save();ctx.globalAlpha=Math.sin(Math.PI*travel)*.85;ctx.translate(x,y);ctx.rotate(side*(travel-.5)*.35);ctx.fillStyle=ink();ctx.strokeStyle=lcd();ctx.lineWidth=2;ctx.font=`900 ${24+i%2*4}px monospace`;ctx.textAlign='center';ctx.strokeText('$',0,0);ctx.fillText('$',0,0);ctx.restore();
+    }
+  }
+
   function hud(){
     ctx.fillStyle=ink();ctx.textAlign='right';ctx.font='900 54px monospace';const scoreText=game.score<0?'-$'+String(Math.abs(game.score)).padStart(3,'0'):'$'+String(game.score).padStart(3,'0');ctx.fillText(scoreText,805,78);
     for(let i=0;i<3;i++){const x=235+i*40;ctx.beginPath();ctx.moveTo(x,74);ctx.bezierCurveTo(x-18,58,x-31,82,x,107);ctx.bezierCurveTo(x+31,82,x+18,58,x,74);if(i<game.lives)ctx.fill();else ctx.stroke()}
@@ -332,6 +351,9 @@
       const y=245-Math.min(105,game.hypeClock*.07);
       ctx.save();ctx.globalAlpha=clamp(fade,0,1);ctx.lineWidth=5;ctx.strokeStyle='rgba(36,48,29,.62)';ctx.strokeText(game.hypeText,480,y);ctx.fillStyle='#eee6d0';ctx.fillText(game.hypeText,480,y);ctx.restore();
     }
+    if(game.reaction==='gameover'){
+      ctx.font='900 58px "Arial Narrow",Arial,sans-serif';ctx.lineWidth=6;ctx.strokeStyle=lcd();ctx.fillStyle=ink();ctx.strokeText('РАЗОЧАРОВАНИЕ',480,185);ctx.fillText('РАЗОЧАРОВАНИЕ',480,185);
+    }
   }
 
   function draw(dt=16){
@@ -341,7 +363,7 @@
     drawMirroredLayer(balconyFrontUp);
     animatedInvestors(1);
     drawMirroredLayer(balconyFrontDown);
-    game.items.forEach(startup);caughtBox();oleg();effects(dt);hud();
+    game.items.forEach(startup);caughtBox();gameoverDollarDrift();oleg();effects(dt);hud();
     if(game.paused){ctx.fillStyle='rgba(155,170,120,.78)';ctx.fillRect(260,235,440,115);ctx.fillStyle=ink();ctx.textAlign='center';ctx.font='900 46px monospace';ctx.fillText('ПАУЗА',480,305)}
     gameStatus.textContent=`Счёт $${game.score}, жизни ${game.lives}, ${game.message}`;
   }
@@ -354,12 +376,13 @@
   function burstPoop(){for(let i=0;i<18;i++){const angle=-Math.PI*.92+Math.random()*Math.PI*.84,speed=.13+Math.random()*.18;game.poopBurst.push({x:480+(Math.random()-.5)*45,y:365+(Math.random()-.5)*55,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-.05,rot:Math.random()*Math.PI*2,vr:(Math.random()-.5)*.012,size:7+Math.random()*6,life:850+Math.random()*550})}}
   function showHype(lines){game.hypeText=lines[Math.floor(Math.random()*lines.length)];game.hypeClock=0}
   function rollItemType(){const roll=Math.random();return roll<ITEM_CHANCES.unicorn?'unicorn':roll<ITEM_CHANCES.unicorn+ITEM_CHANCES.toxic?'toxic':'startup'}
+  function triggerGameover(){game.lives=0;game.running=false;game.reaction='gameover';game.reactionClock=0;game.catchAnim=null;game.hypeText='';game.hypeClock=0;game.message='РАЗОЧАРОВАНИЕ · А/Б — РЕВАНШ';beep('over')}
   function catchItem(item){
     const [x,y]=pathPoint(item.lane,ease(item.progress));
     const type=item.type||'startup';
     game.lastDelta=type==='unicorn'?1000:type==='toxic'?-2000:(game.mode==='A'?100:200);
     game.score+=game.lastDelta;game.reaction=type==='startup'?'catch':type;game.reactionClock=0;game.catchAnim={...item,upper:item.lane===0||item.lane===2,x,y,t:0,rotation:Math.sin(item.progress*18)*.16};
-    if(type==='toxic'){game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(toxicLines);beep('toxic');return}
+    if(type==='toxic'){game.lives=Math.max(0,game.lives-1);game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(toxicLines);if(game.lives===0){triggerGameover();return}beep('toxic');return}
     if(type==='unicorn'){game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();celebrate(18);showHype(unicornLines);beep('unicorn');return}
     game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`;
     if(game.playTime>=game.nextDanceAt){game.danceQueued=true;game.nextDanceAt=game.playTime+25000+Math.random()*20000}
@@ -368,7 +391,7 @@
   }
   function missItem(item){
     if(item.type==='toxic')return;
-    game.lives--;game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';smash(item.lane);beep('miss');if(game.lives<=0){game.lives=0;game.running=false;game.reaction='gameover';game.message='GAME OVER · А/Б — РЕВАНШ';beep('over')}
+    game.lives--;game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';smash(item.lane);beep('miss');if(game.lives<=0)triggerGameover()
   }
 
   function update(dt){
@@ -389,7 +412,7 @@
       game.lastActor=actor;game.throwTimers[lane]=0;game.throwActors[lane]=actor;
       game.items.push({id:id++,lane,actor,releaseAt,progress:0,age:0,type:rollItemType(),label:labels[id%labels.length]});
     }
-    const survivors=[];for(const item of game.items){item.age+=dt;if(item.age>=item.releaseAt)item.progress+=dt*speed;if(item.type==='toxic'&&item.progress>=CATCH_START&&item.lane!==game.lane)item.rejected=true;if(item.rejected&&item.progress>=TOXIC_REJECT_END)continue;if(!item.rejected&&item.lane===game.lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
+    const survivors=[];for(const item of game.items){item.age+=dt;if(item.age>=item.releaseAt)item.progress+=dt*speed;if(item.type==='toxic'&&item.progress>=CATCH_START&&item.lane!==game.lane)item.rejected=true;if(item.rejected&&item.progress>=TOXIC_REJECT_END)continue;if(!item.rejected&&item.lane===game.lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=game.reaction==='gameover'?[]:survivors;
   }
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
