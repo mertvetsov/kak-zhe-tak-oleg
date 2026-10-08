@@ -12,10 +12,16 @@
   const olegSprites = new Image();
   const upperCatchSprites = new Image();
   const emotionSprites = new Image();
+  const directionalSprites = new Image();
+  const missedSprite = new Image();
+  const boxFlightSprites = new Image();
   backgroundArt.src = 'assets/lcd-background.png';
   olegSprites.src = 'assets/oleg-sprites.png';
   upperCatchSprites.src = 'assets/oleg-upper-catch-v2.png';
   emotionSprites.src = 'assets/oleg-emotions-v2.png';
+  directionalSprites.src = 'assets/oleg-four-directions-v3.png';
+  missedSprite.src = 'assets/oleg-missed-v3.png';
+  boxFlightSprites.src = 'assets/startup-box-flight-v3.png';
 
   const lanes = [
     [[150,120],[295,180],[390,258],[455,343]],
@@ -97,12 +103,15 @@
 
   function oleg(){
     if(!olegSprites.complete||!olegSprites.naturalWidth){sadOleg();return}
-    const upperIncoming=game.items.filter(item=>item.lane===game.lane&&(item.lane===0||item.lane===2)&&item.progress>.4).sort((a,b)=>b.progress-a.progress)[0];
-    if(upperCatchSprites.complete&&upperCatchSprites.naturalWidth&&(upperIncoming||game.reaction==='catch'&&game.catchAnim?.upper)){
-      const sw=upperCatchSprites.naturalWidth/6,sh=upperCatchSprites.naturalHeight;
-      const frame=game.reaction==='catch'?Math.min(5,3+Math.floor(game.reactionClock/260)):Math.min(2,Math.floor((upperIncoming.progress-.4)/.12));
-      const height=350,width=height*(sw/sh),flip=game.lane<2;
-      ctx.save();if(flip){ctx.translate(960,0);ctx.scale(-1,1)}ctx.drawImage(upperCatchSprites,frame*sw,0,sw,sh,480-width/2,235,width,height);ctx.restore();return;
+    if(game.reaction==='miss'&&missedSprite.complete&&missedSprite.naturalWidth){
+      const h=345,w=h*(missedSprite.naturalWidth/missedSprite.naturalHeight);ctx.drawImage(missedSprite,480-w/2,228,w,h);return;
+    }
+    if(game.reaction!=='gameover'&&directionalSprites.complete&&directionalSprites.naturalWidth){
+      const sw=directionalSprites.naturalWidth/8,sh=directionalSprites.naturalHeight;
+      const emptyFrame=[2,0,4,6][game.lane],caughtFrame=[3,1,5,7][game.lane];
+      const caught=game.reaction==='catch'&&game.catchAnim?.t>190;
+      const frame=caught?caughtFrame:emptyFrame,h=342,w=h*(sw/sh),bounce=caught?Math.sin(game.reactionClock*.025)*6:0;
+      ctx.drawImage(directionalSprites,frame*sw,0,sw,sh,480-w/2,238+bounce,w,h);return;
     }
     let pose=0;
     if(game.reaction==='catch')pose=game.catchAnim?.upper?1:2;
@@ -142,18 +151,19 @@
     ctx.restore();
   }
 
-  function startupBox(x,y,label,rotation=0,scale=1){
+  function startupBox(x,y,label,rotation=0,scale=1,frame=0){
+    if(boxFlightSprites.complete&&boxFlightSprites.naturalWidth){const sw=boxFlightSprites.naturalWidth/6,sh=boxFlightSprites.naturalHeight,dw=92*scale,dh=dw*(sh/sw);ctx.drawImage(boxFlightSprites,(frame%6)*sw,0,sw,sh,x-dw/2,y-dh/2,dw,dh);return}
     ctx.save();ctx.translate(x,y);ctx.rotate(rotation);ctx.scale(scale,scale);ctx.fillStyle=lcd();ctx.strokeStyle=ink();ctx.lineWidth=6;roundRect(-30,-24,60,48,3,true,true);line(-30,-8,30,-8,3);line(-12,-23,-12,-8,3);line(13,-23,13,-8,3);ctx.fillStyle=ink();ctx.font='900 13px monospace';ctx.textAlign='center';ctx.fillText(label,0,13);ctx.restore();
   }
   function startup(item){
-    const [x,y]=pathPoint(item.lane,ease(item.progress));startupBox(x,y,item.label,Math.sin(item.progress*18)*.16);
+    const [x,y]=pathPoint(item.lane,ease(item.progress));startupBox(x,y,item.label,Math.sin(item.progress*18)*.16,1,Math.floor(item.progress*12));
   }
   function caughtBox(){
     const a=game.catchAnim;if(!a||a.t>360)return;
     const p=clamp(a.t/360,0,1), q=1-Math.pow(1-p,3);
     const target=[480+(a.lane<2?-54:54),a.upper?255:340];
     const x=a.x+(target[0]-a.x)*q, y=a.y+(target[1]-a.y)*q-28*Math.sin(p*Math.PI);
-    startupBox(x,y,a.label,(1-p)*a.rotation,1-p*.28);
+    startupBox(x,y,a.label,(1-p)*a.rotation,1-p*.28,Math.floor(a.t/60));
   }
 
   function effects(dt){
