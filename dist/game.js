@@ -21,7 +21,9 @@
   const userLeftUpBox = new Image();
   const userLeftDropped = new Image();
   const investorFrames = Array.from({length:7},()=>new Image());
-  backgroundArt.src = 'assets/lcd-background-clean-v5.png';
+  const balconyBack = new Image();
+  const balconyFront = new Image();
+  backgroundArt.src = 'assets/lcd-background-no-houses-user-v8.png';
   olegSprites.src = 'assets/oleg-sprites.png';
   upperCatchSprites.src = 'assets/oleg-upper-catch-v2.png';
   emotionSprites.src = 'assets/oleg-emotions-v2.png';
@@ -34,6 +36,8 @@
   userLeftUpBox.src = 'assets/oleg-left-up-caught-user-v4.png';
   userLeftDropped.src = 'assets/oleg-left-dropped-user-v4.png';
   investorFrames.forEach((image,i)=>image.src=`assets/investor-balcony-${String(i).padStart(2,'0')}-v7.png`);
+  balconyBack.src = 'assets/balcony-back-user-v8.png';
+  balconyFront.src = 'assets/balcony-front-user-v8.png';
 
   const lanes = [
     [[150,120],[295,180],[390,258],[455,343]],
@@ -83,6 +87,22 @@
   function background(){
     ctx.fillStyle=lcd();ctx.fillRect(0,0,W,H);
     if(backgroundArt.complete&&backgroundArt.naturalWidth)ctx.drawImage(backgroundArt,0,0,W,H);
+    drawMirroredLayer(balconyBack);
+  }
+
+  function drawMirroredLayer(image){
+    if(!image.complete||!image.naturalWidth)return;
+    const width=H*(image.naturalWidth/image.naturalHeight);
+    ctx.drawImage(image,0,0,width,H);
+    ctx.save();ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,0,0,width,H);ctx.restore();
+  }
+
+  function balconyForeground(){
+    drawMirroredLayer(balconyFront);
+    ctx.save();ctx.fillStyle=ink();ctx.font='900 29px sans-serif';ctx.textAlign='center';
+    ctx.save();ctx.translate(90,222);ctx.rotate(.055);ctx.fillText('ИНВЕСТОР',0,0);ctx.restore();
+    ctx.save();ctx.translate(W-90,222);ctx.rotate(-.055);ctx.fillText('ИНВЕСТОР',0,0);ctx.restore();
+    ctx.restore();
   }
 
   function animatedInvestors(){
@@ -91,7 +111,7 @@
       const timer=game.throwTimers[side];
       const frame=timer<100?0:timer<230?1:timer<360?2:timer<480?3:timer<610?4:timer<750?5:timer<880?6:0;
       const image=investorFrames[frame],dw=240,dh=199,dy=25;
-      ctx.save();ctx.beginPath();ctx.rect(0,0,W,183);ctx.clip();
+      ctx.save();
       if(side===1){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,-240,dy,dw,dh)}
       else ctx.drawImage(image,-6,dy,dw,dh);
       ctx.restore();
@@ -209,30 +229,30 @@
   function effects(dt){
     game.fragments.forEach(f=>{f.x+=f.vx*dt;f.y+=f.vy*dt;f.vy+=.0012*dt;f.rot+=f.vr*dt;ctx.save();ctx.translate(f.x,f.y);ctx.rotate(f.rot);ctx.fillStyle=lcd();ctx.strokeStyle=ink();ctx.lineWidth=4;ctx.fillRect(-12,-9,24,18);ctx.strokeRect(-12,-9,24,18);ctx.restore()});
     game.fragments=game.fragments.filter(f=>f.y<570&&f.life-- >0);
-    game.sparks.forEach(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.life*.01);ctx.strokeStyle=ink();ctx.lineWidth=4;line(-7,0,7,0,3);line(0,-7,0,7,3);ctx.restore()});game.sparks=game.sparks.filter(s=>s.life>0);
+    game.sparks.forEach(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.vy+=.00035*dt;s.life-=dt;ctx.save();ctx.translate(s.x,s.y);ctx.rotate(Math.sin(s.life*.015)*.18);ctx.fillStyle=ink();ctx.font='900 27px monospace';ctx.textAlign='center';ctx.fillText('$',0,0);ctx.restore()});game.sparks=game.sparks.filter(s=>s.life>0);
   }
 
   function hud(){
-    ctx.fillStyle=ink();ctx.textAlign='right';ctx.font='900 64px monospace';ctx.fillText(String(game.score).padStart(3,'0'),805,78);
+    ctx.fillStyle=ink();ctx.textAlign='right';ctx.font='900 54px monospace';ctx.fillText('$'+String(game.score).padStart(3,'0'),805,78);
     for(let i=0;i<3;i++){const x=235+i*40;ctx.beginPath();ctx.moveTo(x,74);ctx.bezierCurveTo(x-18,58,x-31,82,x,107);ctx.bezierCurveTo(x+31,82,x+18,58,x,74);if(i<game.lives)ctx.fill();else ctx.stroke()}
     ctx.textAlign='center';ctx.font='900 22px monospace';ctx.fillText(game.message,480,575);
-    if(game.reaction==='catch'&&game.reactionClock<500){ctx.font='900 34px monospace';ctx.fillText('+'+(game.mode==='A'?1:2),480,210-game.reactionClock*.05)}
+    if(game.reaction==='catch'&&game.reactionClock<500){ctx.font='900 34px monospace';ctx.fillText('+$'+(game.mode==='A'?100:200),480,210-game.reactionClock*.05)}
   }
 
   function draw(dt=16){
-    ctx.clearRect(0,0,W,H);background();animatedInvestors();game.items.forEach(startup);caughtBox();oleg();effects(dt);hud();
+    ctx.clearRect(0,0,W,H);background();animatedInvestors();balconyForeground();game.items.forEach(startup);caughtBox();oleg();effects(dt);hud();
     if(game.paused){ctx.fillStyle='rgba(155,170,120,.78)';ctx.fillRect(260,235,440,115);ctx.fillStyle=ink();ctx.textAlign='center';ctx.font='900 46px monospace';ctx.fillText('ПАУЗА',480,305)}
-    gameStatus.textContent=`Счёт ${game.score}, жизни ${game.lives}, ${game.message}`;
+    gameStatus.textContent=`Счёт $${game.score}, жизни ${game.lives}, ${game.message}`;
   }
 
   function smash(lane){
     const end=lanes[lane][3];for(let i=0;i<7;i++)game.fragments.push({x:end[0]+(lane<2?-35:35),y:510,vx:(Math.random()-.5)*.28,vy:-Math.random()*.24-.08,rot:0,vr:(Math.random()-.5)*.014,life:90});
   }
-  function celebrate(){for(let i=0;i<10;i++)game.sparks.push({x:480+(Math.random()-.5)*100,y:320+(Math.random()-.5)*80,vx:(Math.random()-.5)*.08,vy:-Math.random()*.1,life:500+Math.random()*300})}
+  function celebrate(){for(let i=0;i<9;i++)game.sparks.push({x:480+(Math.random()-.5)*100,y:320+(Math.random()-.5)*80,vx:(Math.random()-.5)*.08,vy:-Math.random()*.14-.03,life:650+Math.random()*350})}
   function catchItem(item){
     const [x,y]=pathPoint(item.lane,ease(item.progress));
-    game.score+=game.mode==='A'?1:2;game.reaction='catch';game.reactionClock=0;game.catchAnim={lane:item.lane,upper:item.lane===0||item.lane===2,label:item.label,x,y,t:0,rotation:Math.sin(item.progress*18)*.16};
-    game.message=item.lane===0||item.lane===2?'ВЕРХНЯЯ ЛОВЛЯ!':['СХВАТИЛ!','ЕСТЬ РАУНД!','В ДЕКЕ!','НЕ ПРОСРАЛ!'][game.score%4];celebrate();beep('catch');
+    game.score+=game.mode==='A'?100:200;game.reaction='catch';game.reactionClock=0;game.catchAnim={lane:item.lane,upper:item.lane===0||item.lane===2,label:item.label,x,y,t:0,rotation:Math.sin(item.progress*18)*.16};
+    game.message=item.lane===0||item.lane===2?'ВЕРХНЯЯ ЛОВЛЯ!':['СХВАТИЛ!','ЕСТЬ РАУНД!','В ДЕКЕ!','НЕ ПРОСРАЛ!'][(game.score/100)%4];celebrate();beep('catch');
   }
   function missItem(item){
     game.lives--;game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';smash(item.lane);beep('miss');if(game.lives<=0){game.lives=0;game.running=false;game.reaction='gameover';game.message='GAME OVER · А/Б — РЕВАНШ';beep('over')}
@@ -242,10 +262,11 @@
     if(!game.running||game.paused)return;
     game.throwTimers[0]+=dt;game.throwTimers[1]+=dt;
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;if((game.reaction==='catch'&&game.reactionClock>900)||(game.reaction==='miss'&&game.reactionClock>1050)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`}
-    const speed=(game.mode==='A'?.000115:.00017)+Math.min(.00008,game.score*.000002);spawnClock+=dt;
-    const spawnEvery=game.mode==='A'?Math.max(780,1700-game.score*18):Math.max(480,1050-game.score*12);
+    const rounds=game.score/100;
+    const speed=(game.mode==='A'?.000115:.00017)+Math.min(.00008,rounds*.000002);spawnClock+=dt;
+    const spawnEvery=game.mode==='A'?Math.max(780,1700-rounds*18):Math.max(480,1050-rounds*12);
     const cap=game.mode==='A'?1:2;
-    if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap&&!game.items.some(item=>item.progress>.45)){spawnClock=0;const lane=Math.floor(Math.random()*4);game.items.push({id:id++,lane,progress:0,age:0,label:labels[id%labels.length]});game.throwTimers[lane<2?0:1]=0}
+    if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap&&!game.items.some(item=>item.progress>.45)){spawnClock=0;const occupied=new Set(game.items.map(item=>item.lane<2?0:1)),free=[0,1].filter(side=>!occupied.has(side)),side=free.length?free[Math.floor(Math.random()*free.length)]:Math.floor(Math.random()*2),lane=side*2+Math.floor(Math.random()*2);game.items.push({id:id++,lane,progress:0,age:0,label:labels[id%labels.length]});game.throwTimers[side]=0}
     const survivors=[];for(const item of game.items){item.age+=dt;item.progress+=dt*speed;if(item.lane===game.lane&&item.progress>=CATCH_PROGRESS)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
   }
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
