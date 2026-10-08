@@ -77,6 +77,10 @@
     [1097,103,341,492],[1457,120,331,548],[1821,116,328,477]
   ];
   const SPECIAL_FRAME_SIZE = 362;
+  const DANCE_CROPS = [
+    [117,254,243,423],[73,192,289,485],[154,253,187,415],[95,200,289,472],
+    [57,251,300,420],[141,250,193,427],[120,246,247,433],[117,285,249,395]
+  ];
   const ITEM_CHANCES = { unicorn:.04, toxic:.10 };
   const labels = ['AI','SaaS','WEB3','B2B','APP','$'];
   const hypeLines = [
@@ -85,13 +89,15 @@
     'PRODUCT–MARKET FIT!','ИНВЕСТОР В ВОСТОРГЕ!','X10 К ОЦЕНКЕ!',
     'ЭТО УЖЕ НЕ MVP!','СЖИГАЕМ КЭШ!','ПИВОТИМ!','СИНЕРГИЯ!','DISRUPT!'
   ];
+  const unicornLines = ['ЕДЕМ В ЕДИНОРОГИ!','VALUATION В КОСМОС!','X10 К ОЦЕНКЕ!','РАУНД ЗАКРЫТ!'];
+  const toxicLines = ['DUE DILIGENCE НЕ ПРОШЁЛ!','КЭШ-ФЛОУ ПОПЛЫЛ!','АКТИВ ОКАЗАЛСЯ ТОКСИЧНЫМ!','СЛИШКОМ МНОГО LEGACY!'];
   const CATCH_PROGRESS = .44;
   let game = fresh('A');
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
   function fresh(mode){
     const firstActor=Math.random()<.5?0:1;
-    return { running:false, paused:false, mode, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'ВЫБЕРИ ИГРУ', fragments:[], sparks:[], dollarRain:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor, playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0 };
+    return { running:false, paused:false, mode, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'ВЫБЕРИ ИГРУ', fragments:[], sparks:[], dollarRain:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor, playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0 };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -103,8 +109,20 @@
     if(!sound) return;
     try{
       audio ||= new (window.AudioContext||window.webkitAudioContext)();
-      const notes = kind==='unicorn'?[660,880,1100,1320]:kind==='toxic'?[180,120,75]:kind==='catch'?[520,760,1040]:kind==='miss'?[210,145,95]:kind==='over'?[220,185,150,110]:kind==='start'?[330,440,660]:[250];
-      notes.forEach((f,i)=>{const o=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime+i*.065;o.type='square';o.frequency.value=f;g.gain.setValueAtTime(.04,t);g.gain.exponentialRampToValueAtTime(.001,t+.06);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+.07)});
+      const tone=(frequency,offset,duration,type='square',volume=.04)=>{const o=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime+offset;o.type=type;o.frequency.value=frequency;g.gain.setValueAtTime(volume,t);g.gain.exponentialRampToValueAtTime(.001,t+duration);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+duration+.01)};
+      if(kind==='unicorn'){
+        [523,659,784,1047,1319].forEach((frequency,i)=>tone(frequency,i*.075,.16,'triangle',.055));
+        tone(2093,.31,.22,'sine',.035);return;
+      }
+      if(kind==='toxic'){
+        [185,128,82].forEach((frequency,i)=>tone(frequency,i*.07,.2,'sawtooth',.045));
+        const length=Math.floor(audio.sampleRate*.24),buffer=audio.createBuffer(1,length,audio.sampleRate),data=buffer.getChannelData(0);
+        for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(1-i/length);
+        const source=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain(),t=audio.currentTime;
+        source.buffer=buffer;filter.type='lowpass';filter.frequency.value=520;gain.gain.setValueAtTime(.065,t);gain.gain.exponentialRampToValueAtTime(.001,t+.24);source.connect(filter).connect(gain).connect(audio.destination);source.start(t);return;
+      }
+      const notes = kind==='catch'?[520,760,1040]:kind==='miss'?[210,145,95]:kind==='over'?[220,185,150,110]:kind==='start'?[330,440,660]:[250];
+      notes.forEach((frequency,i)=>tone(frequency,i*.065,.06));
     }catch(e){}
   }
 
@@ -187,9 +205,9 @@
   function oleg(){
     if(!olegSprites.complete||!olegSprites.naturalWidth)return;
     if(game.reaction==='dance'&&danceFrames.every(image=>image.complete&&image.naturalWidth)){
-      const image=danceFrames[Math.min(danceFrames.length-1,Math.floor(game.reactionClock/130))];
-      const height=330,width=height*(image.naturalWidth/image.naturalHeight);
-      ctx.drawImage(image,480-width/2,552-height,width,height);return;
+      const frame=Math.min(danceFrames.length-1,Math.floor(game.reactionClock/130)),image=danceFrames[frame],src=DANCE_CROPS[frame];
+      const height=270,width=height*(src[2]/src[3]);
+      ctx.drawImage(image,...src,480-width/2,552-height,width,height);return;
     }
     if((game.reaction==='miss'||game.reaction==='toxic')&&userLeftDropped.complete&&userLeftDropped.naturalWidth){
       drawUserOleg(userLeftDropped,[28,245,344,440],game.missLane>=2,0);return;
@@ -251,7 +269,7 @@
   }
   function specialItem(x,y,type,scale=1,frame=0,mirror=false){
     if(!specialItemSprites.complete||!specialItemSprites.naturalWidth)return;
-    const row=type==='unicorn'?1:0,size=148*scale;
+    const row=type==='unicorn'?1:0,size=(type==='toxic'?168:148)*scale;
     ctx.save();ctx.translate(x,y);if(mirror)ctx.scale(-1,1);
     if(type==='unicorn'){ctx.shadowColor='#f3ce4d';ctx.shadowBlur=10}
     ctx.drawImage(specialItemSprites,Math.min(5,frame)*SPECIAL_FRAME_SIZE,row*SPECIAL_FRAME_SIZE,SPECIAL_FRAME_SIZE,SPECIAL_FRAME_SIZE,-size/2,-size/2,size,size);
@@ -263,14 +281,22 @@
   }
   function startup(item){
     if(item.age<item.releaseAt)return;
-    const [x,y]=pathPoint(item.lane,ease(item.progress)),special=item.type==='unicorn'||item.type==='toxic';drawItem(x,y,item,1,Math.floor(item.progress*(special?6:12)));
+    const [x,y]=pathPoint(item.lane,ease(item.progress)),special=item.type==='unicorn'||item.type==='toxic';
+    const frame=item.type==='toxic'?Math.floor(item.progress*14):Math.floor(item.progress*(special?6:12));
+    drawItem(x,y,item,1,frame);
   }
   function caughtBox(){
     const a=game.catchAnim;if(!a||a.t>360)return;
     const p=clamp(a.t/360,0,1), q=1-Math.pow(1-p,3);
     const target=[480+(a.lane<2?-54:54),a.upper?255:340];
     const x=a.x+(target[0]-a.x)*q, y=a.y+(target[1]-a.y)*q-28*Math.sin(p*Math.PI);
-    drawItem(x,y,a,1-p*.28,Math.floor(a.t/60),(1-p)*a.rotation);
+    drawItem(x,y,a,1-p*.28,Math.floor(a.t/(a.type==='toxic'?35:60)),(1-p)*a.rotation);
+  }
+
+  function drawPoop(p){
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.scale(p.size,p.size);ctx.fillStyle=ink();ctx.strokeStyle=lcd();ctx.lineWidth=.18;
+    ctx.beginPath();ctx.arc(0,-.72,.33,0,Math.PI*2);ctx.arc(-.28,-.38,.47,0,Math.PI*2);ctx.arc(.28,-.38,.47,0,Math.PI*2);ctx.ellipse(0,.08,.78,.48,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=lcd();ctx.beginPath();ctx.arc(-.22,-.4,.09,0,Math.PI*2);ctx.arc(.22,-.4,.09,0,Math.PI*2);ctx.fill();ctx.restore();
   }
 
   function effects(dt){
@@ -278,6 +304,7 @@
     game.fragments=game.fragments.filter(f=>f.y<570&&f.life-- >0);
     game.sparks.forEach(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.vy+=.00035*dt;s.life-=dt;ctx.save();ctx.translate(s.x,s.y);ctx.rotate(Math.sin(s.life*.015)*.18);ctx.fillStyle=ink();ctx.font='900 27px monospace';ctx.textAlign='center';ctx.fillText('$',0,0);ctx.restore()});game.sparks=game.sparks.filter(s=>s.life>0);
     game.dollarRain.forEach(d=>{d.y+=d.vy*dt;d.x+=Math.sin(d.y*.025+d.phase)*d.drift*dt;d.life-=dt;if(d.y>-20){ctx.save();ctx.translate(d.x,d.y);ctx.rotate(Math.sin(d.y*.018+d.phase)*.28);ctx.fillStyle=ink();ctx.font=`900 ${d.size}px monospace`;ctx.textAlign='center';ctx.fillText('$',0,0);ctx.restore()}});game.dollarRain=game.dollarRain.filter(d=>d.life>0&&d.y<H+50);
+    game.poopBurst.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=.0005*dt;p.rot+=p.vr*dt;p.life-=dt;drawPoop(p)});game.poopBurst=game.poopBurst.filter(p=>p.life>0&&p.y<H+40);
   }
 
   function hud(){
@@ -310,14 +337,16 @@
   }
   function celebrate(count=9){for(let i=0;i<count;i++)game.sparks.push({x:480+(Math.random()-.5)*100,y:320+(Math.random()-.5)*80,vx:(Math.random()-.5)*.08,vy:-Math.random()*.14-.03,life:650+Math.random()*350})}
   function rainDollars(){for(let i=0;i<42;i++)game.dollarRain.push({x:70+Math.random()*(W-140),y:-30-Math.random()*520,vy:.12+Math.random()*.12,drift:(Math.random()-.5)*.035,phase:Math.random()*Math.PI*2,size:22+Math.random()*20,life:3200+Math.random()*900})}
+  function burstPoop(){for(let i=0;i<18;i++){const angle=-Math.PI*.92+Math.random()*Math.PI*.84,speed=.13+Math.random()*.18;game.poopBurst.push({x:480+(Math.random()-.5)*45,y:365+(Math.random()-.5)*55,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-.05,rot:Math.random()*Math.PI*2,vr:(Math.random()-.5)*.012,size:7+Math.random()*6,life:850+Math.random()*550})}}
+  function showHype(lines){game.hypeText=lines[Math.floor(Math.random()*lines.length)];game.hypeClock=0}
   function rollItemType(){const roll=Math.random();return roll<ITEM_CHANCES.unicorn?'unicorn':roll<ITEM_CHANCES.unicorn+ITEM_CHANCES.toxic?'toxic':'startup'}
   function catchItem(item){
     const [x,y]=pathPoint(item.lane,ease(item.progress));
     const type=item.type||'startup';
     game.lastDelta=type==='unicorn'?1000:type==='toxic'?-2000:(game.mode==='A'?100:200);
     game.score+=game.lastDelta;game.reaction=type==='startup'?'catch':type;game.reactionClock=0;game.catchAnim={...item,upper:item.lane===0||item.lane===2,x,y,t:0,rotation:Math.sin(item.progress*18)*.16};
-    if(type==='toxic'){game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;beep('toxic');return}
-    if(type==='unicorn'){game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();celebrate(18);beep('unicorn');return}
+    if(type==='toxic'){game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(toxicLines);beep('toxic');return}
+    if(type==='unicorn'){game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();celebrate(18);showHype(unicornLines);beep('unicorn');return}
     game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`;
     if(game.playTime>=game.nextDanceAt){game.danceQueued=true;game.nextDanceAt=game.playTime+25000+Math.random()*20000}
     if(game.playTime>=game.nextHypeAt){game.hypeText=hypeLines[Math.floor(Math.random()*hypeLines.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+5000+Math.random()*4000}
