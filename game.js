@@ -27,7 +27,8 @@
   const balconyBack = new Image();
   const balconyFrontUp = new Image();
   const balconyFrontDown = new Image();
-  const specialItemSprites = new Image();
+  const toxicItemSprites = new Image();
+  const unicornItemSprites = new Image();
   const danceFrames = Array.from({length:8},()=>new Image());
   backgroundArt.src = 'assets/lcd-background-no-houses-user-v8.png';
   olegSprites.src = 'assets/oleg-sprites.png';
@@ -35,7 +36,7 @@
   emotionSprites.src = 'assets/oleg-emotions-v2.png';
   directionalSprites.src = 'assets/oleg-four-directions-v3.png';
   missedSprite.src = 'assets/oleg-missed-v3.png';
-  boxFlightSprites.src = 'assets/startup-box-flight-v3.png';
+  boxFlightSprites.src = 'assets/startup-box-flight-v4.png';
   userLeftLow.src = 'assets/oleg-left-low-user-v4.png';
   userLeftLowBox.src = 'assets/oleg-left-low-caught-user-v4.png';
   userLeftUp.src = 'assets/oleg-left-up-user-v4.png';
@@ -46,10 +47,11 @@
   balconyBack.src = 'assets/balcony-back-two-floor-user-v9.png';
   balconyFrontUp.src = 'assets/balcony-front-up-user-v9.png';
   balconyFrontDown.src = 'assets/balcony-front-down-user-v9.png';
-  specialItemSprites.src = 'assets/special-items-v1.png';
+  toxicItemSprites.src = 'assets/toxic-box-flight-v2.png';
+  unicornItemSprites.src = 'assets/unicorn-flight-v2.png';
   danceFrames.forEach((image,i)=>image.src=`assets/oleg-dance-${String(i+1).padStart(2,'0')}-v1.png`);
 
-  const allAssets = [backgroundArt,olegSprites,upperCatchSprites,emotionSprites,directionalSprites,missedSprite,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown,specialItemSprites,...danceFrames];
+  const allAssets = [backgroundArt,olegSprites,upperCatchSprites,emotionSprites,directionalSprites,missedSprite,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,...danceFrames];
   let assetsReady=false,loadedAssets=0;
   const trackAsset=image=>new Promise(resolve=>{
     const done=ok=>{loadedAssets++;overlayStatus.textContent=`${loadedAssets} / ${allAssets.length}`;resolve(ok)};
@@ -73,10 +75,17 @@
     [1095,21,250,653],[1370,66,248,633],[1640,67,250,607],[1910,118,252,555]
   ];
   const boxFrames = [
-    [15,45,337,566],[373,89,341,601],[734,93,340,543],
-    [1097,103,341,492],[1457,120,331,548],[1821,116,328,477]
+    [97,132,178,128],[441,131,156,135],[756,130,172,122],
+    [1094,114,222,149],[1415,124,242,149],[1756,132,176,129]
   ];
-  const SPECIAL_FRAME_SIZE = 362;
+  const toxicFrames = [
+    [92,102,172,125],[403,98,230,136],[732,94,242,156],
+    [1074,80,242,181],[1415,78,242,183],[1756,109,220,152]
+  ];
+  const unicornFrames = [
+    [47,80,247,181],[398,55,228,231],[761,42,184,257],
+    [1078,79,233,183],[1418,74,236,193],[1765,71,224,199]
+  ];
   const DANCE_CROPS = [
     [117,254,243,423],[73,192,289,485],[154,253,187,415],[95,200,289,472],
     [57,251,300,420],[141,250,193,427],[120,246,247,433],[117,285,249,395]
@@ -93,6 +102,7 @@
   const toxicLines = ['DUE DILIGENCE НЕ ПРОШЁЛ!','КЭШ-ФЛОУ ПОПЛЫЛ!','АКТИВ ОКАЗАЛСЯ ТОКСИЧНЫМ!','СЛИШКОМ МНОГО LEGACY!'];
   const CATCH_START = .44;
   const CATCH_END = .72;
+  const TOXIC_REJECT_END = .52;
   let game = fresh('A');
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
@@ -265,16 +275,18 @@
     ctx.restore();
   }
 
+  function spriteFrame(image,frames,frame,x,y,scale=1,mirror=false,loop=false,glow=false){
+    if(!image.complete||!image.naturalWidth)return;
+    const src=frames[loop?frame%frames.length:Math.min(frames.length-1,frame)],maxSide=Math.max(src[2],src[3]),size=144*scale,dw=size*(src[2]/maxSide),dh=size*(src[3]/maxSide);
+    ctx.save();ctx.translate(x,y);if(mirror)ctx.scale(-1,1);if(glow){ctx.shadowColor='#f3ce4d';ctx.shadowBlur=10}ctx.drawImage(image,...src,-dw/2,-dh/2,dw,dh);ctx.restore();
+  }
   function startupBox(x,y,label,rotation=0,scale=1,frame=0){
-    if(boxFlightSprites.complete&&boxFlightSprites.naturalWidth){const src=boxFrames[frame%6],maxSide=Math.max(src[2],src[3]),dw=144*scale*(src[2]/maxSide),dh=144*scale*(src[3]/maxSide);ctx.drawImage(boxFlightSprites,...src,x-dw/2,y-dh/2,dw,dh);return}
+    spriteFrame(boxFlightSprites,boxFrames,frame,x,y,scale,false,true);
   }
   function specialItem(x,y,type,scale=1,frame=0,mirror=false){
-    if(!specialItemSprites.complete||!specialItemSprites.naturalWidth)return;
-    const row=type==='unicorn'?1:0,size=(type==='toxic'?168:148)*scale;
-    ctx.save();ctx.translate(x,y);if(mirror)ctx.scale(-1,1);
-    if(type==='unicorn'){ctx.shadowColor='#f3ce4d';ctx.shadowBlur=10}
-    ctx.drawImage(specialItemSprites,Math.min(5,frame)*SPECIAL_FRAME_SIZE,row*SPECIAL_FRAME_SIZE,SPECIAL_FRAME_SIZE,SPECIAL_FRAME_SIZE,-size/2,-size/2,size,size);
-    ctx.restore();
+    const image=type==='unicorn'?unicornItemSprites:toxicItemSprites;
+    const frames=type==='unicorn'?unicornFrames:toxicFrames;
+    spriteFrame(image,frames,frame,x,y,scale,mirror,false,type==='unicorn');
   }
   function drawItem(x,y,item,scale=1,frame=0,rotation=Math.sin(item.progress*18)*.16){
     if(item.type==='unicorn'||item.type==='toxic')specialItem(x,y,item.type,scale,frame,item.lane>=2);
@@ -376,12 +388,12 @@
       game.lastActor=actor;game.throwTimers[lane]=0;game.throwActors[lane]=actor;
       game.items.push({id:id++,lane,actor,releaseAt,progress:0,age:0,type:rollItemType(),label:labels[id%labels.length]});
     }
-    const survivors=[];for(const item of game.items){item.age+=dt;if(item.age>=item.releaseAt)item.progress+=dt*speed;if(item.lane===game.lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
+    const survivors=[];for(const item of game.items){item.age+=dt;if(item.age>=item.releaseAt)item.progress+=dt*speed;if(item.type==='toxic'&&item.progress>=CATCH_START&&item.lane!==game.lane)item.rejected=true;if(item.rejected&&item.progress>=TOXIC_REJECT_END)continue;if(!item.rejected&&item.lane===game.lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
   }
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
   function start(mode){if(!assetsReady)return;game=fresh(mode);game.running=true;game.message=`ИГРА ${mode==='A'?'А':'Б'}`;spawnClock=9999;overlay.classList.add('hidden');modeButtons.forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));pauseButton.textContent='ПАУЗА';beep('start')}
-  function choose(lane){if(!game.running||game.paused)return;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
+  function choose(lane){if(!game.running||game.paused)return;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
   function pause(){if(!game.running)return;game.paused=!game.paused;game.message=game.paused?'ПАУЗА':`ИГРА ${game.mode==='A'?'А':'Б'}`;pauseButton.textContent=game.paused?'ПРОДОЛЖИТЬ':'ПАУЗА'}
 
   laneButtons.forEach(b=>b.addEventListener('pointerdown',()=>choose(+b.dataset.lane)));
