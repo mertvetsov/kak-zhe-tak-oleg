@@ -44,10 +44,10 @@
   balconyFrontDown.src = 'assets/balcony-front-down-user-v9.png';
 
   const lanes = [
-    [[235,145],[335,170],[415,235],[455,315]],
-    [[235,365],[340,360],[420,385],[455,405]],
-    [[725,145],[625,170],[545,235],[505,315]],
-    [[725,365],[620,360],[540,385],[505,405]],
+    [[260,140],[390,25],[435,65],[455,300]],
+    [[220,400],[315,305],[405,325],[455,430]],
+    [[700,140],[570,25],[525,65],[505,300]],
+    [[740,400],[645,305],[555,325],[505,430]],
   ];
   const directionFrames = [
     [16,101,250,573],[285,37,250,635],[550,33,255,637],[825,71,250,601],
@@ -91,8 +91,11 @@
   function poly(points,w=5){ctx.lineWidth=w;ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke()}
   function roundRect(x,y,w,h,r,fill=true,stroke=true){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill)ctx.fill();if(stroke)ctx.stroke()}
   function pathPoint(lane,t){
-    const p=lanes[lane], scaled=clamp(t,0,.999)*3, i=Math.floor(scaled), u=scaled-i;
-    return [p[i][0]+(p[i+1][0]-p[i][0])*u,p[i][1]+(p[i+1][1]-p[i][1])*u];
+    const p=lanes[lane],u=clamp(t,0,1),v=1-u;
+    return [
+      v*v*v*p[0][0]+3*v*v*u*p[1][0]+3*v*u*u*p[2][0]+u*u*u*p[3][0],
+      v*v*v*p[0][1]+3*v*v*u*p[1][1]+3*v*u*u*p[2][1]+u*u*u*p[3][1]
+    ];
   }
 
   function background(){
@@ -246,8 +249,9 @@
     if(game.reaction==='catch'&&game.reactionClock<500){ctx.font='900 34px monospace';ctx.fillText('+$'+(game.mode==='A'?100:200),480,210-game.reactionClock*.05)}
     if(game.hypeText&&game.hypeClock<1800){
       const fade=game.hypeClock<1400?1:(1800-game.hypeClock)/400;
-      let size=30;ctx.font=`900 ${size}px monospace`;while(ctx.measureText(game.hypeText).width>570&&size>18){size--;ctx.font=`900 ${size}px monospace`}
-      ctx.save();ctx.globalAlpha=clamp(fade,0,1);ctx.fillStyle=ink();ctx.fillText(game.hypeText,480,270-Math.min(22,game.hypeClock*.025));ctx.restore();
+      let size=44;ctx.font=`900 ${size}px "Arial Narrow",Arial,sans-serif`;while(ctx.measureText(game.hypeText).width>650&&size>24){size--;ctx.font=`900 ${size}px "Arial Narrow",Arial,sans-serif`}
+      const y=245-Math.min(105,game.hypeClock*.07);
+      ctx.save();ctx.globalAlpha=clamp(fade,0,1);ctx.lineWidth=5;ctx.strokeStyle='rgba(36,48,29,.62)';ctx.strokeText(game.hypeText,480,y);ctx.fillStyle='#eee6d0';ctx.fillText(game.hypeText,480,y);ctx.restore();
     }
   }
 
