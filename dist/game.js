@@ -21,8 +21,10 @@
   const userLeftUpBox = new Image();
   const userLeftDropped = new Image();
   const investorFrames = Array.from({length:7},()=>new Image());
+  const investorFrames2 = Array.from({length:6},()=>new Image());
   const balconyBack = new Image();
-  const balconyFront = new Image();
+  const balconyFrontUp = new Image();
+  const balconyFrontDown = new Image();
   backgroundArt.src = 'assets/lcd-background-no-houses-user-v8.png';
   olegSprites.src = 'assets/oleg-sprites.png';
   upperCatchSprites.src = 'assets/oleg-upper-catch-v2.png';
@@ -36,14 +38,16 @@
   userLeftUpBox.src = 'assets/oleg-left-up-caught-user-v4.png';
   userLeftDropped.src = 'assets/oleg-left-dropped-user-v4.png';
   investorFrames.forEach((image,i)=>image.src=`assets/investor-balcony-${String(i).padStart(2,'0')}-v7.png`);
-  balconyBack.src = 'assets/balcony-back-user-v8.png';
-  balconyFront.src = 'assets/balcony-front-user-v8.png';
+  investorFrames2.forEach((image,i)=>image.src=`assets/investor2-balcony-${String(i).padStart(2,'0')}-v9.png`);
+  balconyBack.src = 'assets/balcony-back-two-floor-user-v9.png';
+  balconyFrontUp.src = 'assets/balcony-front-up-user-v9.png';
+  balconyFrontDown.src = 'assets/balcony-front-down-user-v9.png';
 
   const lanes = [
-    [[205,145],[310,155],[400,235],[455,320]],
-    [[205,145],[315,235],[405,335],[455,390]],
-    [[755,145],[650,155],[560,235],[505,320]],
-    [[755,145],[645,235],[555,335],[505,390]],
+    [[245,145],[335,165],[415,235],[455,315]],
+    [[245,365],[340,355],[420,375],[455,405]],
+    [[715,145],[625,165],[545,235],[505,315]],
+    [[715,365],[620,355],[540,375],[505,405]],
   ];
   const directionFrames = [
     [16,101,250,573],[285,37,250,635],[550,33,255,637],[825,71,250,601],
@@ -59,7 +63,8 @@
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
   function fresh(mode){
-    return { running:false, paused:false, mode, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'ВЫБЕРИ ИГРУ', fragments:[], sparks:[], tears:[], catchAnim:null, throwTimers:[9999,9999] };
+    const firstActor=Math.random()<.5?0:1;
+    return { running:false, paused:false, mode, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'ВЫБЕРИ ИГРУ', fragments:[], sparks:[], tears:[], catchAnim:null, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -98,15 +103,20 @@
   }
 
   function balconyForeground(){
-    drawMirroredLayer(balconyFront);
+    drawMirroredLayer(balconyFrontUp);
+    drawMirroredLayer(balconyFrontDown);
   }
 
   function animatedInvestors(){
-    if(investorFrames.some(image=>!image.complete||!image.naturalWidth))return;
-    for(let side=0;side<2;side++){
-      const timer=game.throwTimers[side];
-      const frame=timer<100?0:timer<230?1:timer<360?2:timer<480?3:timer<610?4:timer<750?5:timer<880?6:0;
-      const image=investorFrames[frame],dw=240,dh=199,dy=25;
+    for(let lane=0;lane<4;lane++){
+      const timer=game.throwTimers[lane],actor=game.throwActors[lane];
+      if(timer>=900||actor<0)continue;
+      const frames=actor===0?investorFrames:investorFrames2;
+      if(frames.some(image=>!image.complete||!image.naturalWidth))continue;
+      const frame=actor===0
+        ? (timer<100?0:timer<230?1:timer<360?2:timer<480?3:timer<610?4:timer<750?5:6)
+        : (timer<100?0:timer<250?1:timer<400?2:timer<550?3:timer<720?4:5);
+      const image=frames[frame],dw=240,dh=199,dy=lane%2===0?25:245,side=lane>=2;
       ctx.save();
       if(side===1){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,-6,dy,dw,dh)}
       else ctx.drawImage(image,-6,dy,dw,dh);
@@ -211,7 +221,7 @@
     ctx.save();ctx.translate(x,y);ctx.rotate(rotation);ctx.scale(scale,scale);ctx.fillStyle=lcd();ctx.strokeStyle=ink();ctx.lineWidth=6;roundRect(-30,-24,60,48,3,true,true);line(-30,-8,30,-8,3);line(-12,-23,-12,-8,3);line(13,-23,13,-8,3);ctx.fillStyle=ink();ctx.font='900 13px monospace';ctx.textAlign='center';ctx.fillText(label,0,13);ctx.restore();
   }
   function startup(item){
-    if(item.age<750)return;
+    if(item.age<item.releaseAt)return;
     const [x,y]=pathPoint(item.lane,ease(item.progress));startupBox(x,y,item.label,Math.sin(item.progress*18)*.16,1,Math.floor(item.progress*12));
   }
   function caughtBox(){
@@ -256,14 +266,20 @@
 
   function update(dt){
     if(!game.running||game.paused)return;
-    game.throwTimers[0]+=dt;game.throwTimers[1]+=dt;
+    game.throwTimers.forEach((timer,lane)=>game.throwTimers[lane]=timer+dt);
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;if((game.reaction==='catch'&&game.reactionClock>900)||(game.reaction==='miss'&&game.reactionClock>1050)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`}
     const rounds=game.score/100;
     const speed=(game.mode==='A'?.000115:.00017)+Math.min(.00008,rounds*.000002);spawnClock+=dt;
     const spawnEvery=game.mode==='A'?Math.max(780,1700-rounds*18):Math.max(480,1050-rounds*12);
     const cap=game.mode==='A'?1:2;
-    if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap&&!game.items.some(item=>item.progress>.45)){spawnClock=0;const occupied=new Set(game.items.map(item=>item.lane<2?0:1)),free=[0,1].filter(side=>!occupied.has(side)),side=free.length?free[Math.floor(Math.random()*free.length)]:Math.floor(Math.random()*2),lane=side*2+Math.floor(Math.random()*2);game.items.push({id:id++,lane,progress:0,age:0,label:labels[id%labels.length]});game.throwTimers[side]=0}
-    const survivors=[];for(const item of game.items){item.age+=dt;if(item.age>=750)item.progress+=dt*speed;if(item.lane===game.lane&&item.progress>=CATCH_PROGRESS)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
+    if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap&&!game.items.some(item=>item.progress>.45)){
+      spawnClock=0;
+      const occupied=new Set(game.items.map(item=>item.lane)),free=[0,1,2,3].filter(lane=>!occupied.has(lane)&&game.throwTimers[lane]>=900),pool=free.length?free:[0,1,2,3].filter(lane=>!occupied.has(lane));
+      const lane=pool[Math.floor(Math.random()*pool.length)],actor=1-game.lastActor,releaseAt=actor===0?750:720;
+      game.lastActor=actor;game.throwTimers[lane]=0;game.throwActors[lane]=actor;
+      game.items.push({id:id++,lane,actor,releaseAt,progress:0,age:0,label:labels[id%labels.length]});
+    }
+    const survivors=[];for(const item of game.items){item.age+=dt;if(item.age>=item.releaseAt)item.progress+=dt*speed;if(item.lane===game.lane&&item.progress>=CATCH_PROGRESS)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
   }
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
