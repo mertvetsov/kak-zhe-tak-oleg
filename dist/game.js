@@ -20,7 +20,7 @@
   const userLeftUp = new Image();
   const userLeftUpBox = new Image();
   const userLeftDropped = new Image();
-  const investorThrowSprites = new Image();
+  const investorFrames = Array.from({length:7},()=>new Image());
   backgroundArt.src = 'assets/lcd-background-clean-v5.png';
   olegSprites.src = 'assets/oleg-sprites.png';
   upperCatchSprites.src = 'assets/oleg-upper-catch-v2.png';
@@ -33,7 +33,7 @@
   userLeftUp.src = 'assets/oleg-left-up-user-v4.png';
   userLeftUpBox.src = 'assets/oleg-left-up-caught-user-v4.png';
   userLeftDropped.src = 'assets/oleg-left-dropped-user-v4.png';
-  investorThrowSprites.src = 'assets/investor-throw-v5.png';
+  investorFrames.forEach((image,i)=>image.src=`assets/investor-balcony-${String(i).padStart(2,'0')}-v7.png`);
 
   const lanes = [
     [[150,120],[295,180],[390,258],[455,343]],
@@ -86,13 +86,14 @@
   }
 
   function animatedInvestors(){
-    if(!investorThrowSprites.complete||!investorThrowSprites.naturalWidth)return;
-    const sw=investorThrowSprites.naturalWidth/4,sh=investorThrowSprites.naturalHeight;
+    if(investorFrames.some(image=>!image.complete||!image.naturalWidth))return;
     for(let side=0;side<2;side++){
-      const timer=game.throwTimers[side],frame=timer<520?Math.min(3,Math.floor(timer/130)):3;
-      const dw=244,dh=dw*(sh/sw),dx=side===0?-2:W-242,dy=-12;
-      ctx.save();if(side===1){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(investorThrowSprites,frame*sw,0,sw,sh,-242,dy,dw,dh)}
-      else ctx.drawImage(investorThrowSprites,frame*sw,0,sw,sh,dx,dy,dw,dh);
+      const timer=game.throwTimers[side];
+      const frame=timer<100?0:timer<230?1:timer<360?2:timer<480?3:timer<610?4:timer<750?5:timer<880?6:0;
+      const image=investorFrames[frame],dw=240,dh=199,dy=25;
+      ctx.save();ctx.beginPath();ctx.rect(0,0,W,183);ctx.clip();
+      if(side===1){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,-240,dy,dw,dh)}
+      else ctx.drawImage(image,-6,dy,dw,dh);
       ctx.restore();
     }
   }
@@ -194,7 +195,7 @@
     ctx.save();ctx.translate(x,y);ctx.rotate(rotation);ctx.scale(scale,scale);ctx.fillStyle=lcd();ctx.strokeStyle=ink();ctx.lineWidth=6;roundRect(-30,-24,60,48,3,true,true);line(-30,-8,30,-8,3);line(-12,-23,-12,-8,3);line(13,-23,13,-8,3);ctx.fillStyle=ink();ctx.font='900 13px monospace';ctx.textAlign='center';ctx.fillText(label,0,13);ctx.restore();
   }
   function startup(item){
-    if(item.age<390)return;
+    if(item.age<750)return;
     const [x,y]=pathPoint(item.lane,ease(item.progress));startupBox(x,y,item.label,Math.sin(item.progress*18)*.16,1,Math.floor(item.progress*12));
   }
   function caughtBox(){
