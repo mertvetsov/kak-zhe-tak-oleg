@@ -2,6 +2,8 @@
   const canvas = document.querySelector('#game');
   const ctx = canvas.getContext('2d');
   const overlay = document.querySelector('#overlay');
+  const overlayTitle = overlay.querySelector('strong');
+  const overlayStatus = overlay.querySelector('span');
   const laneButtons = [...document.querySelectorAll('[data-lane]')];
   const modeButtons = [...document.querySelectorAll('[data-mode]')];
   const pauseButton = document.querySelector('#pause');
@@ -42,6 +44,19 @@
   balconyBack.src = 'assets/balcony-back-two-floor-user-v9.png';
   balconyFrontUp.src = 'assets/balcony-front-up-user-v9.png';
   balconyFrontDown.src = 'assets/balcony-front-down-user-v9.png';
+
+  const allAssets = [backgroundArt,olegSprites,upperCatchSprites,emotionSprites,directionalSprites,missedSprite,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown];
+  let assetsReady=false,loadedAssets=0;
+  const trackAsset=image=>new Promise(resolve=>{
+    const done=ok=>{loadedAssets++;overlayStatus.textContent=`${loadedAssets} / ${allAssets.length}`;resolve(ok)};
+    if(image.complete)return done(Boolean(image.naturalWidth));
+    image.addEventListener('load',()=>done(true),{once:true});
+    image.addEventListener('error',()=>done(false),{once:true});
+  });
+  Promise.all(allAssets.map(trackAsset)).then(results=>{
+    if(results.every(Boolean)){assetsReady=true;overlayTitle.textContent='СПАСИ СТАРТАПЫ';overlayStatus.textContent='Выбери режим игры';modeButtons.forEach(button=>button.disabled=false)}
+    else{overlayTitle.textContent='ОШИБКА ЗАГРУЗКИ';overlayStatus.textContent='Обнови страницу, чтобы попробовать снова'}
+  });
 
   const lanes = [
     [[260,140],[390,25],[435,65],[455,300]],
@@ -274,6 +289,7 @@
     const [x,y]=pathPoint(item.lane,ease(item.progress));
     game.score+=game.mode==='A'?100:200;game.reaction='catch';game.reactionClock=0;game.catchAnim={lane:item.lane,upper:item.lane===0||item.lane===2,label:item.label,x,y,t:0,rotation:Math.sin(item.progress*18)*.16};
     game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`;
+    if(game.playTime>=game.nextHypeAt){game.hypeText=hypeLines[Math.floor(Math.random()*hypeLines.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+5000+Math.random()*4000}
     celebrate();beep('catch');
   }
   function missItem(item){
@@ -283,7 +299,6 @@
   function update(dt){
     if(!game.running||game.paused)return;
     game.playTime+=dt;if(game.hypeText)game.hypeClock+=dt;
-    if(game.playTime>=game.nextHypeAt){game.hypeText=hypeLines[Math.floor(Math.random()*hypeLines.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+6000+Math.random()*4000;celebrate()}
     game.throwTimers.forEach((timer,lane)=>game.throwTimers[lane]=timer+dt);
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;if((game.reaction==='catch'&&game.reactionClock>900)||(game.reaction==='miss'&&game.reactionClock>1050)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`}
     const progress=clamp(game.playTime/180000,0,1),ramp=progress*progress*(3-2*progress);
@@ -301,7 +316,7 @@
   }
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
-  function start(mode){game=fresh(mode);game.running=true;game.message=`ИГРА ${mode==='A'?'А':'Б'}`;spawnClock=9999;overlay.classList.add('hidden');modeButtons.forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));pauseButton.textContent='ПАУЗА';beep('start')}
+  function start(mode){if(!assetsReady)return;game=fresh(mode);game.running=true;game.message=`ИГРА ${mode==='A'?'А':'Б'}`;spawnClock=9999;overlay.classList.add('hidden');modeButtons.forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));pauseButton.textContent='ПАУЗА';beep('start')}
   function choose(lane){if(!game.running||game.paused)return;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>item.lane===lane&&item.progress>=.18).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
   function pause(){if(!game.running)return;game.paused=!game.paused;game.message=game.paused?'ПАУЗА':`ИГРА ${game.mode==='A'?'А':'Б'}`;pauseButton.textContent=game.paused?'ПРОДОЛЖИТЬ':'ПАУЗА'}
 

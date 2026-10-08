@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#d7c49f">
   <meta name="description" content="Ретро LCD-игра про Олега, инвесторов и стартапы">
   <title>Как же так, Олег — LCD-игра</title>
-  <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="stylesheet" href="styles.css?v=20">
 </head>
 <body>
   <main class="page">
@@ -26,8 +26,8 @@
         <div class="screen-wrap">
           <canvas id="game" width="960" height="600" aria-label="Игровой LCD-экран"></canvas>
           <div id="overlay" class="overlay">
-            <strong>СПАСИ СТАРТАПЫ</strong>
-            <span>Выбери режим игры</span>
+            <strong>ЗАГРУЗКА</strong>
+            <span>Подготавливаем спрайты…</span>
           </div>
         </div>
 
@@ -40,8 +40,8 @@
       <div class="bottom-panel">
         <button id="pause" class="small-button">ПАУЗА</button>
         <div class="mode-switch" role="group" aria-label="Режим игры">
-          <button data-mode="A">ИГРА А</button>
-          <button data-mode="B">ИГРА Б</button>
+          <button data-mode="A" disabled>ИГРА А</button>
+          <button data-mode="B" disabled>ИГРА Б</button>
         </div>
         <button id="sound" class="small-button" aria-pressed="true">ЗВУК: ВКЛ</button>
       </div>
@@ -51,6 +51,6 @@
       <div class="speaker" aria-hidden="true">••••••••••••</div>
     </section>
   </main>
-  <script src="game.js?v=19"></script>
+  <script src="game.js?v=20"></script>
 </body>
 </html>
