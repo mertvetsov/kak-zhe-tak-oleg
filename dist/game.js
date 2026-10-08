@@ -20,7 +20,8 @@
   const userLeftUp = new Image();
   const userLeftUpBox = new Image();
   const userLeftDropped = new Image();
-  backgroundArt.src = 'assets/lcd-background.png';
+  const investorThrowSprites = new Image();
+  backgroundArt.src = 'assets/lcd-background-clean-v5.png';
   olegSprites.src = 'assets/oleg-sprites.png';
   upperCatchSprites.src = 'assets/oleg-upper-catch-v2.png';
   emotionSprites.src = 'assets/oleg-emotions-v2.png';
@@ -32,6 +33,7 @@
   userLeftUp.src = 'assets/oleg-left-up-user-v4.png';
   userLeftUpBox.src = 'assets/oleg-left-up-caught-user-v4.png';
   userLeftDropped.src = 'assets/oleg-left-dropped-user-v4.png';
+  investorThrowSprites.src = 'assets/investor-throw-v5.png';
 
   const lanes = [
     [[150,120],[295,180],[390,258],[455,343]],
@@ -53,7 +55,7 @@
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
   function fresh(mode){
-    return { running:false, paused:false, mode, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'ВЫБЕРИ ИГРУ', fragments:[], sparks:[], tears:[], catchAnim:null };
+    return { running:false, paused:false, mode, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'ВЫБЕРИ ИГРУ', fragments:[], sparks:[], tears:[], catchAnim:null, throwTimers:[9999,9999] };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -81,6 +83,18 @@
   function background(){
     ctx.fillStyle=lcd();ctx.fillRect(0,0,W,H);
     if(backgroundArt.complete&&backgroundArt.naturalWidth)ctx.drawImage(backgroundArt,0,0,W,H);
+  }
+
+  function animatedInvestors(){
+    if(!investorThrowSprites.complete||!investorThrowSprites.naturalWidth)return;
+    const sw=investorThrowSprites.naturalWidth/4,sh=investorThrowSprites.naturalHeight;
+    for(let side=0;side<2;side++){
+      const timer=game.throwTimers[side],frame=timer<520?Math.min(3,Math.floor(timer/130)):3;
+      const dw=244,dh=dw*(sh/sw),dx=side===0?-2:W-242,dy=-12;
+      ctx.save();if(side===1){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(investorThrowSprites,frame*sw,0,sw,sh,-242,dy,dw,dh)}
+      else ctx.drawImage(investorThrowSprites,frame*sw,0,sw,sh,dx,dy,dw,dh);
+      ctx.restore();
+    }
   }
 
   function house(x,flip=1){
@@ -180,6 +194,7 @@
     ctx.save();ctx.translate(x,y);ctx.rotate(rotation);ctx.scale(scale,scale);ctx.fillStyle=lcd();ctx.strokeStyle=ink();ctx.lineWidth=6;roundRect(-30,-24,60,48,3,true,true);line(-30,-8,30,-8,3);line(-12,-23,-12,-8,3);line(13,-23,13,-8,3);ctx.fillStyle=ink();ctx.font='900 13px monospace';ctx.textAlign='center';ctx.fillText(label,0,13);ctx.restore();
   }
   function startup(item){
+    if(item.age<390)return;
     const [x,y]=pathPoint(item.lane,ease(item.progress));startupBox(x,y,item.label,Math.sin(item.progress*18)*.16,1,Math.floor(item.progress*12));
   }
   function caughtBox(){
@@ -204,7 +219,7 @@
   }
 
   function draw(dt=16){
-    ctx.clearRect(0,0,W,H);background();game.items.forEach(startup);caughtBox();oleg();effects(dt);hud();
+    ctx.clearRect(0,0,W,H);background();animatedInvestors();game.items.forEach(startup);caughtBox();oleg();effects(dt);hud();
     if(game.paused){ctx.fillStyle='rgba(155,170,120,.78)';ctx.fillRect(260,235,440,115);ctx.fillStyle=ink();ctx.textAlign='center';ctx.font='900 46px monospace';ctx.fillText('ПАУЗА',480,305)}
     gameStatus.textContent=`Счёт ${game.score}, жизни ${game.lives}, ${game.message}`;
   }
@@ -224,12 +239,13 @@
 
   function update(dt){
     if(!game.running||game.paused)return;
+    game.throwTimers[0]+=dt;game.throwTimers[1]+=dt;
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;if((game.reaction==='catch'&&game.reactionClock>900)||(game.reaction==='miss'&&game.reactionClock>1050)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`}
     const speed=(game.mode==='A'?.000115:.00017)+Math.min(.00008,game.score*.000002);spawnClock+=dt;
     const spawnEvery=game.mode==='A'?Math.max(780,1700-game.score*18):Math.max(480,1050-game.score*12);
     const cap=game.mode==='A'?1:2;
-    if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap&&!game.items.some(item=>item.progress>.45)){spawnClock=0;game.items.push({id:id++,lane:Math.floor(Math.random()*4),progress:0,label:labels[id%labels.length]})}
-    const survivors=[];for(const item of game.items){item.progress+=dt*speed;if(item.lane===game.lane&&item.progress>=CATCH_PROGRESS)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
+    if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap&&!game.items.some(item=>item.progress>.45)){spawnClock=0;const lane=Math.floor(Math.random()*4);game.items.push({id:id++,lane,progress:0,age:0,label:labels[id%labels.length]});game.throwTimers[lane<2?0:1]=0}
+    const survivors=[];for(const item of game.items){item.age+=dt;item.progress+=dt*speed;if(item.lane===game.lane&&item.progress>=CATCH_PROGRESS)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=survivors;
   }
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
