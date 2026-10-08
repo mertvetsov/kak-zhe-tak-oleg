@@ -103,7 +103,7 @@
   const CATCH_START = .44;
   const CATCH_END = .72;
   const TOXIC_REJECT_END = .52;
-  const ITEM_RENDER_SIZE = 96;
+  const ITEM_RENDER_SIZE = 64;
   let game = fresh('A');
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
@@ -304,7 +304,7 @@
     const p=clamp(a.t/360,0,1), q=1-Math.pow(1-p,3);
     const target=[480+(a.lane<2?-54:54),a.upper?255:340];
     const x=a.x+(target[0]-a.x)*q, y=a.y+(target[1]-a.y)*q-28*Math.sin(p*Math.PI);
-    drawItem(x,y,a,1-p*.28,Math.floor(a.t/(a.type==='toxic'?35:60)),(1-p)*a.rotation);
+    drawItem(x,y,a,1,Math.floor(a.t/(a.type==='toxic'?35:60)),(1-p)*a.rotation);
   }
 
   function drawPoop(p){
