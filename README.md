@@ -15,4 +15,4 @@
 
 Откройте `dist/index.html` через любой статический HTTP-сервер.
 
-Основная опубликованная версия: https://kak-zhe-tak-oleg.mertvetsov.chatgpt.site/
+Основная опубликованная версия: https://mertvetsov.github.io/kak-zhe-tak-oleg/
