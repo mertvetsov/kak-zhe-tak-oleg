@@ -52,7 +52,7 @@
   toxicItemSprites.src = 'assets/toxic-box-flight-v2.png';
   unicornItemSprites.src = 'assets/unicorn-flight-v2.png';
   cryingSprites.src = 'assets/oleg-crying-v1.png';
-  achievementSprites.src = 'assets/startup-achievements-v1.png';
+  achievementSprites.src = 'assets/startup-achievements-v2.png';
   danceFrames.forEach((image,i)=>image.src=`assets/oleg-dance-${String(i+1).padStart(2,'0')}-v1.png`);
 
   const allAssets = [backgroundArt,olegSprites,upperCatchSprites,emotionSprites,directionalSprites,missedSprite,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,cryingSprites,achievementSprites,...danceFrames];
@@ -95,8 +95,8 @@
     [1089,37,125,181],[1346,44,123,167],[1602,46,124,163],[1856,40,128,175]
   ];
   const ACHIEVEMENT_CROPS = [
-    [84,18,775,203],[914,28,775,193],[84,244,775,189],[914,245,775,188],
-    [84,469,775,178],[916,461,778,186],[85,678,772,174],[915,678,774,174]
+    [58,81,801,233],[916,81,803,233],[55,354,802,233],
+    [913,352,812,235],[55,616,800,240],[917,616,806,241]
   ];
   const DANCE_CROPS = [
     [117,254,243,423],[73,192,289,485],[154,253,187,415],[95,200,289,472],
@@ -121,7 +121,7 @@
 
   function fresh(){
     const firstActor=Math.random()<.5?0:1;
-    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor, playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, achievements:Array(ACHIEVEMENT_CROPS.length).fill(false), achievementQueue:[], achievement:null, achievementClock:0 };
+    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor, playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], achievements:Array(ACHIEVEMENT_CROPS.length).fill(false), achievementQueue:[], achievement:null, achievementClock:0 };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -296,9 +296,9 @@
     ctx.restore();
   }
 
-  function spriteFrame(image,frames,frame,x,y,scale=1,mirror=false,loop=false,glow=false){
+  function spriteFrame(image,frames,frame,x,y,scale=1,mirror=false,loop=false,glow=false,normalizeArea=true){
     if(!image.complete||!image.naturalWidth)return;
-    const src=frames[loop?frame%frames.length:Math.min(frames.length-1,frame)],reference=frames[0],referenceScale=ITEM_RENDER_SIZE/Math.max(reference[2],reference[3]),areaScale=Math.sqrt((reference[2]*reference[3])/(src[2]*src[3])),dw=src[2]*referenceScale*areaScale*scale,dh=src[3]*referenceScale*areaScale*scale;
+    const src=frames[loop?frame%frames.length:Math.min(frames.length-1,frame)],reference=frames[0],referenceScale=ITEM_RENDER_SIZE/Math.max(reference[2],reference[3]),areaScale=normalizeArea?Math.sqrt((reference[2]*reference[3])/(src[2]*src[3])):1,dw=src[2]*referenceScale*areaScale*scale,dh=src[3]*referenceScale*areaScale*scale;
     ctx.save();ctx.translate(x,y);if(mirror)ctx.scale(-1,1);if(glow){ctx.shadowColor='#f3ce4d';ctx.shadowBlur=10}ctx.drawImage(image,...src,-dw/2,-dh/2,dw,dh);ctx.restore();
   }
   function startupBox(x,y,label,rotation=0,scale=1,frame=0){
@@ -307,7 +307,7 @@
   function specialItem(x,y,type,scale=1,frame=0,mirror=false){
     const image=type==='unicorn'?unicornItemSprites:toxicItemSprites;
     const frames=type==='unicorn'?unicornFrames:toxicFrames;
-    spriteFrame(image,frames,frame,x,y,scale,mirror,false,type==='unicorn');
+    spriteFrame(image,frames,frame,x,y,scale,mirror,false,type==='unicorn',type!=='toxic');
   }
   function drawItem(x,y,item,scale=1,frame=0,rotation=Math.sin(item.progress*18)*.16){
     if(item.type==='unicorn'||item.type==='toxic')specialItem(x,y,item.type,scale,frame,item.lane>=2);
@@ -351,28 +351,29 @@
   }
 
   function hud(){
-    ctx.fillStyle=ink();ctx.textAlign='right';ctx.font='900 54px monospace';const scoreText=game.score<0?'-$'+String(Math.abs(game.score)).padStart(3,'0'):'$'+String(game.score).padStart(3,'0');ctx.fillText(scoreText,805,78);
-    for(let i=0;i<3;i++){const x=235+i*40;ctx.beginPath();ctx.moveTo(x,74);ctx.bezierCurveTo(x-18,58,x-31,82,x,107);ctx.bezierCurveTo(x+31,82,x+18,58,x,74);if(i<game.lives)ctx.fill();else ctx.stroke()}
-    ctx.textAlign='center';
-    if(['catch','unicorn','toxic'].includes(game.reaction)&&game.reactionClock<650){ctx.font='900 34px monospace';const sign=game.lastDelta>=0?'+':'−';ctx.fillText(`${sign}$${Math.abs(game.lastDelta)}`,480,210-game.reactionClock*.05)}
+    const gameover=game.reaction==='gameover';
+    if(!gameover){
+      ctx.fillStyle=ink();ctx.textAlign='right';ctx.font='900 54px monospace';const scoreText=game.score<0?'-$'+String(Math.abs(game.score)).padStart(3,'0'):'$'+String(game.score).padStart(3,'0');ctx.fillText(scoreText,805,78);
+      for(let i=0;i<3;i++){const x=235+i*40;ctx.beginPath();ctx.moveTo(x,74);ctx.bezierCurveTo(x-18,58,x-31,82,x,107);ctx.bezierCurveTo(x+31,82,x+18,58,x,74);if(i<game.lives)ctx.fill();else ctx.stroke()}
+      ctx.textAlign='center';
+      if(['catch','unicorn','toxic'].includes(game.reaction)&&game.reactionClock<650){ctx.font='900 34px monospace';const sign=game.lastDelta>=0?'+':'−';ctx.fillText(`${sign}$${Math.abs(game.lastDelta)}`,480,210-game.reactionClock*.05)}
+    }
     if(game.achievement!==null&&achievementSprites.complete&&achievementSprites.naturalWidth){
       const src=ACHIEVEMENT_CROPS[game.achievement],enter=clamp(game.achievementClock/240,0,1),fade=game.achievementClock<2200?1:(2600-game.achievementClock)/400,width=560,height=width*(src[3]/src[2]),y=190+(1-ease(enter))*100;
       ctx.save();ctx.globalAlpha=clamp(fade,0,1);ctx.drawImage(achievementSprites,...src,480-width/2,y-height/2,width,height);ctx.restore();
     }
-    else if(game.hypeText&&game.hypeClock<1800){
+    else if(!gameover&&game.hypeText&&game.hypeClock<1800){
       const fade=game.hypeClock<1400?1:(1800-game.hypeClock)/400;
       let size=44;ctx.font=`900 ${size}px "Arial Narrow",Arial,sans-serif`;while(ctx.measureText(game.hypeText).width>650&&size>24){size--;ctx.font=`900 ${size}px "Arial Narrow",Arial,sans-serif`}
       const y=245-Math.min(105,game.hypeClock*.07);
       ctx.save();ctx.globalAlpha=clamp(fade,0,1);ctx.lineWidth=5;ctx.strokeStyle='rgba(36,48,29,.62)';ctx.strokeText(game.hypeText,480,y);ctx.fillStyle='#eee6d0';ctx.fillText(game.hypeText,480,y);ctx.restore();
     }
-    if(game.reaction==='gameover'&&game.achievement===null){
-      ctx.font='900 58px "Arial Narrow",Arial,sans-serif';ctx.lineWidth=6;ctx.strokeStyle=lcd();ctx.fillStyle=ink();ctx.strokeText('РАЗОЧАРОВАНИЕ',480,185);ctx.fillText('РАЗОЧАРОВАНИЕ',480,185);
-    }
-    if(game.reaction==='gameover'){
+    if(gameover&&game.achievement===null){
       const time=formatTime(game.playTime),unlocked=game.achievements.filter(Boolean).length;
-      ctx.font='900 25px "Arial Narrow",Arial,sans-serif';ctx.lineWidth=4;ctx.strokeStyle=lcd();ctx.fillStyle=ink();
-      ctx.textAlign='left';ctx.strokeText(`СЧЁТ: $${game.score}`,48,372);ctx.fillText(`СЧЁТ: $${game.score}`,48,372);ctx.strokeText(`ВРЕМЯ: ${time}`,48,414);ctx.fillText(`ВРЕМЯ: ${time}`,48,414);
-      ctx.textAlign='right';ctx.strokeText(`КОРОБОК: ${game.caughtBoxes}`,912,372);ctx.fillText(`КОРОБОК: ${game.caughtBoxes}`,912,372);ctx.strokeText(`ДОСТИЖЕНИЙ: ${unlocked} / ${game.achievements.length}`,912,414);ctx.fillText(`ДОСТИЖЕНИЙ: ${unlocked} / ${game.achievements.length}`,912,414);
+      ctx.textAlign='center';ctx.font='900 68px "Arial Narrow",Arial,sans-serif';ctx.lineWidth=7;ctx.strokeStyle=ink();ctx.fillStyle='#eee6d0';ctx.strokeText('РАЗОЧАРОВАНИЕ',480,198);ctx.fillText('РАЗОЧАРОВАНИЕ',480,198);
+      ctx.font='900 31px "Arial Narrow",Arial,sans-serif';ctx.lineWidth=5;ctx.strokeStyle='rgba(36,48,29,.72)';ctx.fillStyle='#eee6d0';ctx.textAlign='left';
+      ctx.strokeText(`СЧЁТ: $${game.score}`,250,278);ctx.fillText(`СЧЁТ: $${game.score}`,250,278);ctx.strokeText(`ВРЕМЯ: ${time}`,250,326);ctx.fillText(`ВРЕМЯ: ${time}`,250,326);
+      ctx.strokeText(`КОРОБОК: ${game.caughtBoxes}`,575,278);ctx.fillText(`КОРОБОК: ${game.caughtBoxes}`,575,278);ctx.strokeText(`ДОСТИЖЕНИЙ: ${unlocked}/${game.achievements.length}`,575,326);ctx.fillText(`ДОСТИЖЕНИЙ: ${unlocked}/${game.achievements.length}`,575,326);
     }
   }
 
@@ -400,17 +401,20 @@
   function showNextAchievement(){if(game.achievement!==null||!game.achievementQueue.length)return;game.achievement=game.achievementQueue.shift();game.achievementClock=0;game.hypeText='';game.hypeClock=0;beep('achievement')}
   function unlockAchievement(index){if(game.achievements[index])return false;game.achievements[index]=true;game.achievementQueue.push(index);game.hypeText='';game.hypeClock=0;showNextAchievement();return true}
   function advanceAchievement(dt){if(game.achievement===null){showNextAchievement();return}game.achievementClock+=dt;if(game.achievementClock>=2600){game.achievement=null;game.achievementClock=0;showNextAchievement()}}
-  function triggerGameover(){const early=game.playTime<=15000;game.lives=0;game.running=false;game.reaction='gameover';game.reactionClock=0;game.catchAnim=null;game.hypeText='';game.hypeClock=0;game.message='РАЗОЧАРОВАНИЕ · СТАРТ — РЕВАНШ';if(early)unlockAchievement(7);beep('over')}
+  function triggerGameover(){game.lives=0;game.running=false;game.reaction='gameover';game.reactionClock=0;game.catchAnim=null;game.hypeText='';game.hypeClock=0;game.message='РАЗОЧАРОВАНИЕ · СТАРТ — РЕВАНШ';if(game.caughtBoxes===0)unlockAchievement(5);beep('over')}
   function catchItem(item){
     const [x,y]=pathPoint(item.lane,ease(item.progress));
     const type=item.type||'startup';
     game.lastDelta=type==='unicorn'?1000:type==='toxic'?-2000:200;
     game.score+=game.lastDelta;game.reaction=type==='startup'?'catch':type;game.reactionClock=0;game.catchAnim={...item,upper:item.lane===0||item.lane===2,x,y,t:0,rotation:Math.sin(item.progress*18)*.16};
-    if(type==='toxic'){game.catchStreak=0;game.lives=Math.max(0,game.lives-1);game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(toxicLines);if(game.lives===0){triggerGameover();return}beep('toxic');return}
+    if(type==='toxic'){game.catchStreak=0;game.agileStreak=0;game.pivotLanes=[];game.movedSinceCatch=false;game.lives=Math.max(0,game.lives-1);game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(toxicLines);if(game.lives===0){triggerGameover();return}beep('toxic');return}
     let achievementUnlocked=false;
-    if(type==='startup'){game.caughtBoxes++;game.catchStreak++;achievementUnlocked=unlockAchievement(0)||achievementUnlocked;if(game.caughtBoxes>=50)achievementUnlocked=unlockAchievement(1)||achievementUnlocked;if(game.catchStreak>=20)achievementUnlocked=unlockAchievement(4)||achievementUnlocked;if(game.catchStreak>=100)achievementUnlocked=unlockAchievement(5)||achievementUnlocked}
-    if(game.score>=100)achievementUnlocked=unlockAchievement(2)||achievementUnlocked;
-    if(type==='unicorn'){game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();celebrate(18);if(!achievementUnlocked&&game.achievement===null)showHype(unicornLines);beep('unicorn');return}
+    if(type==='startup'){
+      game.caughtBoxes++;game.catchStreak++;
+      game.agileStreak=game.movedSinceCatch?game.agileStreak+1:0;game.movedSinceCatch=false;if(game.agileStreak>=10)achievementUnlocked=unlockAchievement(3)||achievementUnlocked;
+      game.pivotLanes.push(item.lane);game.pivotLanes=game.pivotLanes.slice(-4);if(game.pivotLanes.length===4&&new Set(game.pivotLanes).size===4)achievementUnlocked=unlockAchievement(4)||achievementUnlocked;
+    }
+    if(type==='unicorn'){game.movedSinceCatch=false;game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();celebrate(18);if(!achievementUnlocked&&game.achievement===null)showHype(unicornLines);beep('unicorn');return}
     game.message='ИГРА';
     if(game.playTime>=game.nextDanceAt){game.danceQueued=true;game.nextDanceAt=game.playTime+25000+Math.random()*20000}
     if(!achievementUnlocked&&game.achievement===null&&game.playTime>=game.nextHypeAt){game.hypeText=hypeLines[Math.floor(Math.random()*hypeLines.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+5000+Math.random()*4000}
@@ -418,7 +422,7 @@
   }
   function missItem(item){
     if(item.type==='toxic')return;
-    game.catchStreak=0;if((item.type||'startup')==='startup'){game.missedBoxes++;if(game.missedBoxes>=3)unlockAchievement(6)}game.lives--;game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';smash(item.lane);beep('miss');if(game.lives<=0)triggerGameover()
+    const streak=game.catchStreak;game.catchStreak=0;game.agileStreak=0;game.pivotLanes=[];game.movedSinceCatch=false;if((item.type||'startup')==='startup'){game.missedBoxes++;if(streak>=20)unlockAchievement(0)}game.lives--;game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';smash(item.lane);beep('miss');if(game.lives<=0)triggerGameover()
   }
 
   function update(dt){
@@ -426,7 +430,8 @@
     advanceAchievement(dt);
     if(!game.running)return;
     game.playTime+=dt;if(game.hypeText)game.hypeClock+=dt;
-    if(game.playTime>=180000)unlockAchievement(3);
+    if(game.playTime>=10000&&game.caughtBoxes===0)unlockAchievement(2);
+    if(game.playTime>=300000)unlockAchievement(1);
     game.throwTimers.forEach((timer,lane)=>game.throwTimers[lane]=timer+dt);
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;
     if(game.reaction==='catch'&&game.reactionClock>900){game.reaction=game.danceQueued?'dance':'idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА'}
@@ -447,7 +452,7 @@
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
   function start(){if(!assetsReady)return;game=fresh();game.running=true;game.message='ИГРА';spawnClock=9999;overlay.classList.add('hidden');pauseButton.textContent='ПАУЗА';beep('start')}
-  function choose(lane){if(!game.running||game.paused)return;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
+  function choose(lane){if(!game.running||game.paused)return;if(lane!==game.lane)game.movedSinceCatch=true;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
   function pause(){if(!game.running)return;game.paused=!game.paused;game.message=game.paused?'ПАУЗА':'ИГРА';pauseButton.textContent=game.paused?'ПРОДОЛЖИТЬ':'ПАУЗА'}
 
   laneButtons.forEach(b=>b.addEventListener('pointerdown',()=>choose(+b.dataset.lane)));
