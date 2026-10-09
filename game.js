@@ -1,3 +1,4 @@
+
 (() => {
   const canvas = document.querySelector('#game');
   const ctx = canvas.getContext('2d');
@@ -110,7 +111,7 @@
     [117,254,243,423],[73,192,289,485],[154,253,187,415],[95,200,289,472],
     [57,251,300,420],[141,250,193,427],[120,246,247,433],[117,285,249,395]
   ];
-  const ITEM_CHANCES = { unicorn:.04, toxic:.10 };
+  const ITEM_CHANCES = { unicorn:.04, toxic:.10 };   const INVESTOR_SCALES = [1,.9,1];
   const labels = ['AI','SaaS','WEB3','B2B','APP','$'];
   const CATCH_START = .44;
   const CATCH_END = .72;
@@ -198,10 +199,10 @@
       const image=investorSprites[actor];
       if(!image?.complete||!image.naturalWidth)continue;
       const frame=timer<100?0:timer<230?1:timer<360?2:timer<480?3:timer<610?4:timer<750?5:6;
-      const sw=image.naturalWidth/7,sh=image.naturalHeight,dw=270,dh=270,dy=floor===0?-5:235,side=lane>=2;
+      const sw=image.naturalWidth/7,sh=image.naturalHeight,baseSize=270,scale=INVESTOR_SCALES[actor],dw=baseSize*scale,dh=baseSize*scale,dx=-6+(baseSize-dw)/2,dy=(floor===0?-5:235)+(baseSize-dh),side=lane>=2;
       ctx.save();
-      if(side){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,frame*sw,0,sw,sh,-6,dy,dw,dh)}
-      else ctx.drawImage(image,frame*sw,0,sw,sh,-6,dy,dw,dh);
+      if(side){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,frame*sw,0,sw,sh,dx,dy,dw,dh)}
+      else ctx.drawImage(image,frame*sw,0,sw,sh,dx,dy,dw,dh);
       ctx.restore();
     }
   }
@@ -238,7 +239,7 @@
     if(state==='cry'){
       ctx.fillStyle=ink();const drop=(performance.now()/7)%32;ctx.beginPath();ctx.ellipse(-17,12+drop,4,9,0,0,Math.PI*2);ctx.ellipse(18,22+(drop+14)%32,4,9,0,0,Math.PI*2);ctx.fill();
     }
-    ctx.restore();
+        ctx.restore();
   }
 
   function oleg(){
