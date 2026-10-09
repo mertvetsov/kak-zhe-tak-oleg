@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#d7c49f">
   <meta name="description" content="Ретро LCD-игра про Олега, инвесторов и стартапы">
   <title>Как же так, Олег — LCD-игра</title>
-  <link rel="stylesheet" href="styles.css?v=20">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
   <main class="page">
@@ -39,18 +39,15 @@
 
       <div class="bottom-panel">
         <button id="pause" class="small-button">ПАУЗА</button>
-        <div class="mode-switch" role="group" aria-label="Режим игры">
-          <button data-mode="A" disabled>ИГРА А</button>
-          <button data-mode="B" disabled>ИГРА Б</button>
-        </div>
+        <button id="start" class="start-button" disabled>СТАРТ</button>
         <button id="sound" class="small-button" aria-pressed="true">ЗВУК: ВКЛ</button>
       </div>
 
       <p class="instructions">Клик / касание по красным кнопкам · ← → — сторона · ↑ ↓ — высота · пробел — пауза</p>
-      <output id="game-status" class="sr-only" aria-live="polite">Счёт 0, жизни 3, выберите режим</output>
+      <output id="game-status" class="sr-only" aria-live="polite">Счёт 0, жизни 3, нажмите старт</output>
       <div class="speaker" aria-hidden="true">••••••••••••</div>
     </section>
   </main>
-  <script src="game.js?v=26"></script>
+  <script src="game.js?v=28"></script>
 </body>
 </html>

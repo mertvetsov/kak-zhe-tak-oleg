@@ -5,7 +5,7 @@
   const overlayTitle = overlay.querySelector('strong');
   const overlayStatus = overlay.querySelector('span');
   const laneButtons = [...document.querySelectorAll('[data-lane]')];
-  const modeButtons = [...document.querySelectorAll('[data-mode]')];
+  const startButton = document.querySelector('#start');
   const pauseButton = document.querySelector('#pause');
   const soundButton = document.querySelector('#sound');
   const gameStatus = document.querySelector('#game-status');
@@ -30,6 +30,7 @@
   const toxicItemSprites = new Image();
   const unicornItemSprites = new Image();
   const cryingSprites = new Image();
+  const achievementSprites = new Image();
   const danceFrames = Array.from({length:8},()=>new Image());
   backgroundArt.src = 'assets/lcd-background-no-houses-user-v8.png';
   olegSprites.src = 'assets/oleg-sprites.png';
@@ -51,9 +52,10 @@
   toxicItemSprites.src = 'assets/toxic-box-flight-v2.png';
   unicornItemSprites.src = 'assets/unicorn-flight-v2.png';
   cryingSprites.src = 'assets/oleg-crying-v1.png';
+  achievementSprites.src = 'assets/startup-achievements-v1.png';
   danceFrames.forEach((image,i)=>image.src=`assets/oleg-dance-${String(i+1).padStart(2,'0')}-v1.png`);
 
-  const allAssets = [backgroundArt,olegSprites,upperCatchSprites,emotionSprites,directionalSprites,missedSprite,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,cryingSprites,...danceFrames];
+  const allAssets = [backgroundArt,olegSprites,upperCatchSprites,emotionSprites,directionalSprites,missedSprite,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,cryingSprites,achievementSprites,...danceFrames];
   let assetsReady=false,loadedAssets=0;
   const trackAsset=image=>new Promise(resolve=>{
     const done=ok=>{loadedAssets++;overlayStatus.textContent=`${loadedAssets} / ${allAssets.length}`;resolve(ok)};
@@ -62,7 +64,7 @@
     image.addEventListener('error',()=>done(false),{once:true});
   });
   Promise.all(allAssets.map(trackAsset)).then(results=>{
-    if(results.every(Boolean)){assetsReady=true;overlayTitle.textContent='СПАСИ СТАРТАПЫ';overlayStatus.textContent='Выбери режим игры';modeButtons.forEach(button=>button.disabled=false)}
+    if(results.every(Boolean)){assetsReady=true;overlayTitle.textContent='СПАСИ СТАРТАПЫ';overlayStatus.textContent='Нажми СТАРТ';startButton.disabled=false}
     else{overlayTitle.textContent='ОШИБКА ЗАГРУЗКИ';overlayStatus.textContent='Обнови страницу, чтобы попробовать снова'}
   });
 
@@ -92,6 +94,10 @@
     [67,40,122,175],[321,43,126,170],[578,44,124,168],[835,39,121,178],
     [1089,37,125,181],[1346,44,123,167],[1602,46,124,163],[1856,40,128,175]
   ];
+  const ACHIEVEMENT_CROPS = [
+    [84,18,775,203],[914,28,775,193],[84,244,775,189],[914,245,775,188],
+    [84,469,775,178],[916,461,778,186],[85,678,772,174],[915,678,774,174]
+  ];
   const DANCE_CROPS = [
     [117,254,243,423],[73,192,289,485],[154,253,187,415],[95,200,289,472],
     [57,251,300,420],[141,250,193,427],[120,246,247,433],[117,285,249,395]
@@ -109,13 +115,13 @@
   const CATCH_START = .44;
   const CATCH_END = .72;
   const TOXIC_REJECT_END = .52;
-  const ITEM_RENDER_SIZE = 80;
-  let game = fresh('A');
+  const ITEM_RENDER_SIZE = 116;
+  let game = fresh();
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
-  function fresh(mode){
+  function fresh(){
     const firstActor=Math.random()<.5?0:1;
-    return { running:false, paused:false, mode, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'ВЫБЕРИ ИГРУ', fragments:[], sparks:[], dollarRain:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor, playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0 };
+    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor, playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, achievements:Array(ACHIEVEMENT_CROPS.length).fill(false), achievementQueue:[], achievement:null, achievementClock:0 };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -138,6 +144,10 @@
         for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(1-i/length);
         const source=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain(),t=audio.currentTime;
         source.buffer=buffer;filter.type='lowpass';filter.frequency.value=520;gain.gain.setValueAtTime(.065,t);gain.gain.exponentialRampToValueAtTime(.001,t+.24);source.connect(filter).connect(gain).connect(audio.destination);source.start(t);return;
+      }
+      if(kind==='achievement'){
+        [523,659,784,1047].forEach((frequency,i)=>tone(frequency,i*.08,.22,'square',.045));
+        [1319,1568].forEach((frequency,i)=>tone(frequency,.34+i*.08,.28,'triangle',.055));return;
       }
       const notes = kind==='catch'?[520,760,1040]:kind==='miss'?[210,145,95]:kind==='over'?[220,185,150,110]:kind==='start'?[330,440,660]:[250];
       notes.forEach((frequency,i)=>tone(frequency,i*.065,.06));
@@ -345,14 +355,24 @@
     for(let i=0;i<3;i++){const x=235+i*40;ctx.beginPath();ctx.moveTo(x,74);ctx.bezierCurveTo(x-18,58,x-31,82,x,107);ctx.bezierCurveTo(x+31,82,x+18,58,x,74);if(i<game.lives)ctx.fill();else ctx.stroke()}
     ctx.textAlign='center';
     if(['catch','unicorn','toxic'].includes(game.reaction)&&game.reactionClock<650){ctx.font='900 34px monospace';const sign=game.lastDelta>=0?'+':'−';ctx.fillText(`${sign}$${Math.abs(game.lastDelta)}`,480,210-game.reactionClock*.05)}
-    if(game.hypeText&&game.hypeClock<1800){
+    if(game.achievement!==null&&achievementSprites.complete&&achievementSprites.naturalWidth){
+      const src=ACHIEVEMENT_CROPS[game.achievement],enter=clamp(game.achievementClock/240,0,1),fade=game.achievementClock<2200?1:(2600-game.achievementClock)/400,width=560,height=width*(src[3]/src[2]),y=190+(1-ease(enter))*100;
+      ctx.save();ctx.globalAlpha=clamp(fade,0,1);ctx.drawImage(achievementSprites,...src,480-width/2,y-height/2,width,height);ctx.restore();
+    }
+    else if(game.hypeText&&game.hypeClock<1800){
       const fade=game.hypeClock<1400?1:(1800-game.hypeClock)/400;
       let size=44;ctx.font=`900 ${size}px "Arial Narrow",Arial,sans-serif`;while(ctx.measureText(game.hypeText).width>650&&size>24){size--;ctx.font=`900 ${size}px "Arial Narrow",Arial,sans-serif`}
       const y=245-Math.min(105,game.hypeClock*.07);
       ctx.save();ctx.globalAlpha=clamp(fade,0,1);ctx.lineWidth=5;ctx.strokeStyle='rgba(36,48,29,.62)';ctx.strokeText(game.hypeText,480,y);ctx.fillStyle='#eee6d0';ctx.fillText(game.hypeText,480,y);ctx.restore();
     }
-    if(game.reaction==='gameover'){
+    if(game.reaction==='gameover'&&game.achievement===null){
       ctx.font='900 58px "Arial Narrow",Arial,sans-serif';ctx.lineWidth=6;ctx.strokeStyle=lcd();ctx.fillStyle=ink();ctx.strokeText('РАЗОЧАРОВАНИЕ',480,185);ctx.fillText('РАЗОЧАРОВАНИЕ',480,185);
+    }
+    if(game.reaction==='gameover'){
+      const time=formatTime(game.playTime),unlocked=game.achievements.filter(Boolean).length;
+      ctx.font='900 25px "Arial Narrow",Arial,sans-serif';ctx.lineWidth=4;ctx.strokeStyle=lcd();ctx.fillStyle=ink();
+      ctx.textAlign='left';ctx.strokeText(`СЧЁТ: $${game.score}`,48,372);ctx.fillText(`СЧЁТ: $${game.score}`,48,372);ctx.strokeText(`ВРЕМЯ: ${time}`,48,414);ctx.fillText(`ВРЕМЯ: ${time}`,48,414);
+      ctx.textAlign='right';ctx.strokeText(`КОРОБОК: ${game.caughtBoxes}`,912,372);ctx.fillText(`КОРОБОК: ${game.caughtBoxes}`,912,372);ctx.strokeText(`ДОСТИЖЕНИЙ: ${unlocked} / ${game.achievements.length}`,912,414);ctx.fillText(`ДОСТИЖЕНИЙ: ${unlocked} / ${game.achievements.length}`,912,414);
     }
   }
 
@@ -376,35 +396,45 @@
   function burstPoop(){for(let i=0;i<18;i++){const angle=-Math.PI*.92+Math.random()*Math.PI*.84,speed=.13+Math.random()*.18;game.poopBurst.push({x:480+(Math.random()-.5)*45,y:365+(Math.random()-.5)*55,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-.05,rot:Math.random()*Math.PI*2,vr:(Math.random()-.5)*.012,size:7+Math.random()*6,life:850+Math.random()*550})}}
   function showHype(lines){game.hypeText=lines[Math.floor(Math.random()*lines.length)];game.hypeClock=0}
   function rollItemType(){const roll=Math.random();return roll<ITEM_CHANCES.unicorn?'unicorn':roll<ITEM_CHANCES.unicorn+ITEM_CHANCES.toxic?'toxic':'startup'}
-  function triggerGameover(){game.lives=0;game.running=false;game.reaction='gameover';game.reactionClock=0;game.catchAnim=null;game.hypeText='';game.hypeClock=0;game.message='РАЗОЧАРОВАНИЕ · А/Б — РЕВАНШ';beep('over')}
+  function formatTime(ms){const seconds=Math.floor(ms/1000),minutes=Math.floor(seconds/60);return `${String(minutes).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`}
+  function showNextAchievement(){if(game.achievement!==null||!game.achievementQueue.length)return;game.achievement=game.achievementQueue.shift();game.achievementClock=0;game.hypeText='';game.hypeClock=0;beep('achievement')}
+  function unlockAchievement(index){if(game.achievements[index])return false;game.achievements[index]=true;game.achievementQueue.push(index);game.hypeText='';game.hypeClock=0;showNextAchievement();return true}
+  function advanceAchievement(dt){if(game.achievement===null){showNextAchievement();return}game.achievementClock+=dt;if(game.achievementClock>=2600){game.achievement=null;game.achievementClock=0;showNextAchievement()}}
+  function triggerGameover(){const early=game.playTime<=15000;game.lives=0;game.running=false;game.reaction='gameover';game.reactionClock=0;game.catchAnim=null;game.hypeText='';game.hypeClock=0;game.message='РАЗОЧАРОВАНИЕ · СТАРТ — РЕВАНШ';if(early)unlockAchievement(7);beep('over')}
   function catchItem(item){
     const [x,y]=pathPoint(item.lane,ease(item.progress));
     const type=item.type||'startup';
-    game.lastDelta=type==='unicorn'?1000:type==='toxic'?-2000:(game.mode==='A'?100:200);
+    game.lastDelta=type==='unicorn'?1000:type==='toxic'?-2000:200;
     game.score+=game.lastDelta;game.reaction=type==='startup'?'catch':type;game.reactionClock=0;game.catchAnim={...item,upper:item.lane===0||item.lane===2,x,y,t:0,rotation:Math.sin(item.progress*18)*.16};
-    if(type==='toxic'){game.lives=Math.max(0,game.lives-1);game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(toxicLines);if(game.lives===0){triggerGameover();return}beep('toxic');return}
-    if(type==='unicorn'){game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();celebrate(18);showHype(unicornLines);beep('unicorn');return}
-    game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`;
+    if(type==='toxic'){game.catchStreak=0;game.lives=Math.max(0,game.lives-1);game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(toxicLines);if(game.lives===0){triggerGameover();return}beep('toxic');return}
+    let achievementUnlocked=false;
+    if(type==='startup'){game.caughtBoxes++;game.catchStreak++;achievementUnlocked=unlockAchievement(0)||achievementUnlocked;if(game.caughtBoxes>=50)achievementUnlocked=unlockAchievement(1)||achievementUnlocked;if(game.catchStreak>=20)achievementUnlocked=unlockAchievement(4)||achievementUnlocked;if(game.catchStreak>=100)achievementUnlocked=unlockAchievement(5)||achievementUnlocked}
+    if(game.score>=100)achievementUnlocked=unlockAchievement(2)||achievementUnlocked;
+    if(type==='unicorn'){game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();celebrate(18);if(!achievementUnlocked&&game.achievement===null)showHype(unicornLines);beep('unicorn');return}
+    game.message='ИГРА';
     if(game.playTime>=game.nextDanceAt){game.danceQueued=true;game.nextDanceAt=game.playTime+25000+Math.random()*20000}
-    if(game.playTime>=game.nextHypeAt){game.hypeText=hypeLines[Math.floor(Math.random()*hypeLines.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+5000+Math.random()*4000}
+    if(!achievementUnlocked&&game.achievement===null&&game.playTime>=game.nextHypeAt){game.hypeText=hypeLines[Math.floor(Math.random()*hypeLines.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+5000+Math.random()*4000}
     celebrate();beep('catch');
   }
   function missItem(item){
     if(item.type==='toxic')return;
-    game.lives--;game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';smash(item.lane);beep('miss');if(game.lives<=0)triggerGameover()
+    game.catchStreak=0;if((item.type||'startup')==='startup'){game.missedBoxes++;if(game.missedBoxes>=3)unlockAchievement(6)}game.lives--;game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';smash(item.lane);beep('miss');if(game.lives<=0)triggerGameover()
   }
 
   function update(dt){
-    if(!game.running||game.paused)return;
+    if(game.paused)return;
+    advanceAchievement(dt);
+    if(!game.running)return;
     game.playTime+=dt;if(game.hypeText)game.hypeClock+=dt;
+    if(game.playTime>=180000)unlockAchievement(3);
     game.throwTimers.forEach((timer,lane)=>game.throwTimers[lane]=timer+dt);
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;
-    if(game.reaction==='catch'&&game.reactionClock>900){game.reaction=game.danceQueued?'dance':'idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`}
-    else if((game.reaction==='miss'&&game.reactionClock>1050)||(game.reaction==='unicorn'&&game.reactionClock>1250)||(game.reaction==='toxic'&&game.reactionClock>1100)||(game.reaction==='dance'&&game.reactionClock>1040)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message=`ИГРА ${game.mode==='A'?'А':'Б'}`}
+    if(game.reaction==='catch'&&game.reactionClock>900){game.reaction=game.danceQueued?'dance':'idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА'}
+    else if((game.reaction==='miss'&&game.reactionClock>1050)||(game.reaction==='unicorn'&&game.reactionClock>1250)||(game.reaction==='toxic'&&game.reactionClock>1100)||(game.reaction==='dance'&&game.reactionClock>1040)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message='ИГРА'}
     const progress=clamp(game.playTime/180000,0,1),ramp=progress*progress*(3-2*progress);
-    const speed=game.mode==='A'?.00012+ramp*.00012:.000175+ramp*.000165;spawnClock+=dt;
-    const spawnEvery=game.mode==='A'?1600-ramp*1000:1050-ramp*670;
-    const cap=game.mode==='A'?(game.playTime>60000?2:1):(game.playTime>120000?4:game.playTime>45000?3:2);
+    const speed=.000175+ramp*.000165;spawnClock+=dt;
+    const spawnEvery=1050-ramp*670;
+    const cap=game.playTime>120000?4:game.playTime>45000?3:2;
     if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap){
       spawnClock=0;
       const occupied=new Set(game.items.map(item=>item.lane)),free=[0,1,2,3].filter(lane=>!occupied.has(lane)&&game.throwTimers[lane]>=900),pool=free.length?free:[0,1,2,3].filter(lane=>!occupied.has(lane));
@@ -416,12 +446,12 @@
   }
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
-  function start(mode){if(!assetsReady)return;game=fresh(mode);game.running=true;game.message=`ИГРА ${mode==='A'?'А':'Б'}`;spawnClock=9999;overlay.classList.add('hidden');modeButtons.forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));pauseButton.textContent='ПАУЗА';beep('start')}
+  function start(){if(!assetsReady)return;game=fresh();game.running=true;game.message='ИГРА';spawnClock=9999;overlay.classList.add('hidden');pauseButton.textContent='ПАУЗА';beep('start')}
   function choose(lane){if(!game.running||game.paused)return;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
-  function pause(){if(!game.running)return;game.paused=!game.paused;game.message=game.paused?'ПАУЗА':`ИГРА ${game.mode==='A'?'А':'Б'}`;pauseButton.textContent=game.paused?'ПРОДОЛЖИТЬ':'ПАУЗА'}
+  function pause(){if(!game.running)return;game.paused=!game.paused;game.message=game.paused?'ПАУЗА':'ИГРА';pauseButton.textContent=game.paused?'ПРОДОЛЖИТЬ':'ПАУЗА'}
 
   laneButtons.forEach(b=>b.addEventListener('pointerdown',()=>choose(+b.dataset.lane)));
-  modeButtons.forEach(b=>b.addEventListener('click',()=>start(b.dataset.mode)));
+  startButton.addEventListener('click',start);
   pauseButton.addEventListener('click',pause);
   soundButton.addEventListener('click',()=>{sound=!sound;soundButton.textContent=`ЗВУК: ${sound?'ВКЛ':'ВЫКЛ'}`;soundButton.setAttribute('aria-pressed',String(sound));if(sound)beep('move')});
   addEventListener('keydown',e=>{let lane;if(e.key==='ArrowLeft')lane=game.lane<2?game.lane:game.lane-2;if(e.key==='ArrowRight')lane=game.lane<2?game.lane+2:game.lane;if(e.key==='ArrowUp')lane=game.lane<2?0:2;if(e.key==='ArrowDown')lane=game.lane<2?1:3;if(e.key===' '){e.preventDefault();pause()}else if(lane!==undefined){e.preventDefault();choose(lane)}});
