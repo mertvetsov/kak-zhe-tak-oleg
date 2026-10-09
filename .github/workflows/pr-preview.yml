@@ -30,16 +30,24 @@ jobs:
       - name: Verify preview files
         if: github.event.action != 'closed'
         run: |
-          test -f dist/index.html
-          test -f dist/styles.css
-          test -f dist/game.js
-          test -d dist/assets
+          test -f index.html
+          test -f styles.css
+          test -f game.js
+          test -d assets
+          test -f resources/oleg-exclamations.json
+
+      - name: Prepare preview package
+        if: github.event.action != 'closed'
+        run: |
+          mkdir -p .publish
+          cp index.html styles.css game.js .publish/
+          cp -R assets resources .publish/
 
       - name: Publish or remove preview
         id: preview
         uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1.8.1
         with:
-          source-dir: ./dist
+          source-dir: ./.publish
           preview-branch: gh-pages
           umbrella-dir: pr-preview
           action: auto

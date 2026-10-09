@@ -20,19 +20,35 @@ jobs:
       - name: Check out main
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
+      - name: Check out current Pages branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: gh-pages
+          path: .pages
+
       - name: Verify published game
         run: |
-          test -f dist/index.html
-          test -f dist/styles.css
-          test -f dist/game.js
-          test -d dist/assets
+          test -f index.html
+          test -f styles.css
+          test -f game.js
+          test -d assets
+          test -f resources/oleg-exclamations.json
+
+      - name: Prepare published game
+        run: |
+          mkdir -p .publish
+          cp index.html styles.css game.js .publish/
+          cp -R assets resources .publish/
+          if test -d .pages/pr-preview; then
+            cp -R .pages/pr-preview .publish/
+          fi
 
       - name: Publish stable version
         uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: ./dist
-          keep_files: true
+          publish_dir: ./.publish
+          keep_files: false
           full_commit_message: Publish stable game from ${{ github.sha }}
 

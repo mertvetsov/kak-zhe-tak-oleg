@@ -12,10 +12,7 @@
   const W = canvas.width, H = canvas.height;
   const backgroundArt = new Image();
   const olegSprites = new Image();
-  const upperCatchSprites = new Image();
   const emotionSprites = new Image();
-  const directionalSprites = new Image();
-  const missedSprite = new Image();
   const boxFlightSprites = new Image();
   const userLeftLow = new Image();
   const userLeftLowBox = new Image();
@@ -34,10 +31,7 @@
   const danceFrames = Array.from({length:8},()=>new Image());
   backgroundArt.src = 'assets/lcd-background-no-houses-user-v8.png';
   olegSprites.src = 'assets/oleg-sprites.png';
-  upperCatchSprites.src = 'assets/oleg-upper-catch-v2.png';
   emotionSprites.src = 'assets/oleg-emotions-v2.png';
-  directionalSprites.src = 'assets/oleg-four-directions-v3.png';
-  missedSprite.src = 'assets/oleg-missed-v3.png';
   boxFlightSprites.src = 'assets/startup-box-flight-v4.png';
   userLeftLow.src = 'assets/oleg-left-low-user-v4.png';
   userLeftLowBox.src = 'assets/oleg-left-low-caught-user-v4.png';
@@ -55,15 +49,27 @@
   achievementSprites.src = 'assets/startup-achievements-v2.png';
   danceFrames.forEach((image,i)=>image.src=`assets/oleg-dance-${String(i+1).padStart(2,'0')}-v1.png`);
 
-  const allAssets = [backgroundArt,olegSprites,upperCatchSprites,emotionSprites,directionalSprites,missedSprite,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,cryingSprites,achievementSprites,...danceFrames];
-  let assetsReady=false,loadedAssets=0;
+  const allAssets = [backgroundArt,olegSprites,emotionSprites,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorFrames,...investorFrames2,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,cryingSprites,achievementSprites,...danceFrames];
+  const resourceCount=allAssets.length+1;
+  let assetsReady=false,loadedAssets=0,olegLines=null;
+  const updateLoadStatus=()=>{loadedAssets++;overlayStatus.textContent=`${loadedAssets} / ${resourceCount}`};
   const trackAsset=image=>new Promise(resolve=>{
-    const done=ok=>{loadedAssets++;overlayStatus.textContent=`${loadedAssets} / ${allAssets.length}`;resolve(ok)};
+    const done=ok=>{updateLoadStatus();resolve(ok)};
     if(image.complete)return done(Boolean(image.naturalWidth));
     image.addEventListener('load',()=>done(true),{once:true});
     image.addEventListener('error',()=>done(false),{once:true});
   });
-  Promise.all(allAssets.map(trackAsset)).then(results=>{
+  const loadOlegLines=async()=>{
+    try{
+      const response=await fetch('resources/oleg-exclamations.json?v=1');
+      if(!response.ok)throw new Error(`HTTP ${response.status}`);
+      const data=await response.json(),groups=['catch','unicorn','toxic'];
+      if(!groups.every(group=>Array.isArray(data[group])&&data[group].length&&data[group].every(line=>typeof line==='string'&&line.trim())))throw new Error('Invalid exclamations file');
+      olegLines=data;return true;
+    }catch(error){console.error('Не удалось загрузить реплики Олега',error);return false}
+    finally{updateLoadStatus()}
+  };
+  Promise.all([...allAssets.map(trackAsset),loadOlegLines()]).then(results=>{
     if(results.every(Boolean)){assetsReady=true;overlayTitle.textContent='СПАСИ СТАРТАПЫ';overlayStatus.textContent='Нажми СТАРТ';startButton.disabled=false}
     else{overlayTitle.textContent='ОШИБКА ЗАГРУЗКИ';overlayStatus.textContent='Обнови страницу, чтобы попробовать снова'}
   });
@@ -104,14 +110,6 @@
   ];
   const ITEM_CHANCES = { unicorn:.04, toxic:.10 };
   const labels = ['AI','SaaS','WEB3','B2B','APP','$'];
-  const hypeLines = [
-    'ЕДЕМ В ЕДИНОРОГИ!','МАСШТАБИРУЕМСЯ!','РАУНД ЗАКРЫТ!',
-    'ЮНИТ-ЭКОНОМИКА СОШЛАСЬ!','ПОШЁЛ ТРЕКШН!','ХОККЕЙНАЯ КЛЮШКА!',
-    'PRODUCT–MARKET FIT!','ИНВЕСТОР В ВОСТОРГЕ!','X10 К ОЦЕНКЕ!',
-    'ЭТО УЖЕ НЕ MVP!','СЖИГАЕМ КЭШ!','ПИВОТИМ!','СИНЕРГИЯ!','DISRUPT!'
-  ];
-  const unicornLines = ['ЕДЕМ В ЕДИНОРОГИ!','VALUATION В КОСМОС!','X10 К ОЦЕНКЕ!','РАУНД ЗАКРЫТ!'];
-  const toxicLines = ['DUE DILIGENCE НЕ ПРОШЁЛ!','КЭШ-ФЛОУ ПОПЛЫЛ!','АКТИВ ОКАЗАЛСЯ ТОКСИЧНЫМ!','СЛИШКОМ МНОГО LEGACY!'];
   const CATCH_START = .44;
   const CATCH_END = .72;
   const TOXIC_REJECT_END = .52;
@@ -407,17 +405,17 @@
     const type=item.type||'startup';
     game.lastDelta=type==='unicorn'?1000:type==='toxic'?-2000:200;
     game.score+=game.lastDelta;game.reaction=type==='startup'?'catch':type;game.reactionClock=0;game.catchAnim={...item,upper:item.lane===0||item.lane===2,x,y,t:0,rotation:Math.sin(item.progress*18)*.16};
-    if(type==='toxic'){game.catchStreak=0;game.agileStreak=0;game.pivotLanes=[];game.movedSinceCatch=false;game.lives=Math.max(0,game.lives-1);game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(toxicLines);if(game.lives===0){triggerGameover();return}beep('toxic');return}
+    if(type==='toxic'){game.catchStreak=0;game.agileStreak=0;game.pivotLanes=[];game.movedSinceCatch=false;game.lives=Math.max(0,game.lives-1);game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(olegLines.toxic);if(game.lives===0){triggerGameover();return}beep('toxic');return}
     let achievementUnlocked=false;
     if(type==='startup'){
       game.caughtBoxes++;game.catchStreak++;
       game.agileStreak=game.movedSinceCatch?game.agileStreak+1:0;game.movedSinceCatch=false;if(game.agileStreak>=10)achievementUnlocked=unlockAchievement(3)||achievementUnlocked;
       game.pivotLanes.push(item.lane);game.pivotLanes=game.pivotLanes.slice(-4);if(game.pivotLanes.length===4&&new Set(game.pivotLanes).size===4)achievementUnlocked=unlockAchievement(4)||achievementUnlocked;
     }
-    if(type==='unicorn'){game.movedSinceCatch=false;game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();celebrate(18);if(!achievementUnlocked&&game.achievement===null)showHype(unicornLines);beep('unicorn');return}
+    if(type==='unicorn'){game.movedSinceCatch=false;game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();celebrate(18);if(!achievementUnlocked&&game.achievement===null)showHype(olegLines.unicorn);beep('unicorn');return}
     game.message='ИГРА';
     if(game.playTime>=game.nextDanceAt){game.danceQueued=true;game.nextDanceAt=game.playTime+25000+Math.random()*20000}
-    if(!achievementUnlocked&&game.achievement===null&&game.playTime>=game.nextHypeAt){game.hypeText=hypeLines[Math.floor(Math.random()*hypeLines.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+5000+Math.random()*4000}
+    if(!achievementUnlocked&&game.achievement===null&&game.playTime>=game.nextHypeAt){game.hypeText=olegLines.catch[Math.floor(Math.random()*olegLines.catch.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+5000+Math.random()*4000}
     celebrate();beep('catch');
   }
   function missItem(item){
