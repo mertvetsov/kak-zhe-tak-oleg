@@ -30,21 +30,33 @@
   const achievementSprites = new Image();
   const newAchievementSprites = new Image();
   const danceFrames = Array.from({length:8},()=>new Image());
+  const SPRITE_ASSETS = {
+    investors: [
+      'assets/investor-young-7-frames-v3.png',
+      'assets/investor-businesswoman-7-frames-v3.png',
+      'assets/investor-banker-7-frames-v3.png',
+    ],
+    items: {
+      normal: 'assets/item-box-normal-6-frames-v3.png',
+      toxic: 'assets/item-box-toxic-6-frames-v3.png',
+      unicorn: 'assets/item-unicorn-6-frames-v3.png',
+    },
+  };
   backgroundArt.src = 'assets/lcd-background-no-houses-user-v8.png';
   olegSprites.src = 'assets/oleg-sprites.png';
   emotionSprites.src = 'assets/oleg-emotions-v2.png';
-  boxFlightSprites.src = 'assets/startup-box-flight-v4.png';
   userLeftLow.src = 'assets/oleg-left-low-user-v4.png';
   userLeftLowBox.src = 'assets/oleg-left-low-caught-user-v4.png';
   userLeftUp.src = 'assets/oleg-left-up-user-v4.png';
   userLeftUpBox.src = 'assets/oleg-left-up-caught-user-v4.png';
   userLeftDropped.src = 'assets/oleg-left-dropped-user-v4.png';
-  ['young','businesswoman','banker'].forEach((name,i)=>investorSprites[i].src=`assets/investor-${name}-v1.png`);
+  SPRITE_ASSETS.investors.forEach((source,index)=>investorSprites[index].src=source);
   balconyBack.src = 'assets/balcony-back-two-floor-user-v9.png';
   balconyFrontUp.src = 'assets/balcony-front-up-user-v9.png';
   balconyFrontDown.src = 'assets/balcony-front-down-user-v9.png';
-  toxicItemSprites.src = 'assets/toxic-box-flight-v2.png';
-  unicornItemSprites.src = 'assets/unicorn-flight-v2.png';
+  boxFlightSprites.src = SPRITE_ASSETS.items.normal;
+  toxicItemSprites.src = SPRITE_ASSETS.items.toxic;
+  unicornItemSprites.src = SPRITE_ASSETS.items.unicorn;
   cryingSprites.src = 'assets/oleg-crying-v1.png';
   achievementSprites.src = 'assets/startup-achievements-v2.png';
   newAchievementSprites.src = 'assets/startup-achievements-07-11-v1.png';
@@ -75,27 +87,43 @@
     else{overlayTitle.textContent='ОШИБКА ЗАГРУЗКИ';overlayStatus.textContent='Обнови страницу, чтобы попробовать снова'}
   });
 
-  const lanes = [
-    [[260,140],[390,25],[435,65],[455,300]],
-    [[220,400],[315,305],[405,325],[455,430]],
-    [[700,140],[570,25],[525,65],[505,300]],
-    [[740,400],[645,305],[555,325],[505,430]],
-  ];
+  const ANIMATION_CONFIG = {
+    investors: {
+      frames: 7,
+      scale: .8,
+      baseSize: 292,
+      enterMs: 200,
+      actionFrameMs: 110,
+      exitMs: 200,
+      positions: [
+        { floor: 0, x: -18, y: 43,  slide: 100, mirror: false },
+        { floor: 1, x: -18, y: 283, slide: 100, mirror: false },
+        { floor: 0, x: 744, y: 43,  slide: 100, mirror: true },
+        { floor: 1, x: 744, y: 283, slide: 100, mirror: true },
+      ],
+    },
+    items: {
+      frames: 6,
+      scale: .65,
+      baseSize: 341,
+      normal: { mode: 'loop', frameMs: 105, spin: .0022 },
+      unicorn: { mode: 'loop', frameMs: 115, spin: -.0020 },
+      toxic: { mode: 'once-hold', frameMs: 130, spin: .0017, holdSpin: .00045 },
+    },
+    trajectories: [
+      [[160,145],[340,28],[430,70],[455,300]],
+      [[160,405],[320,300],[415,330],[455,430]],
+      [[800,145],[620,28],[530,70],[505,300]],
+      [[800,405],[640,300],[545,330],[505,430]],
+    ],
+  };
+  const investorActionMs = ANIMATION_CONFIG.investors.actionFrameMs * 5;
+  const investorExitAt = ANIMATION_CONFIG.investors.enterMs + investorActionMs;
+  const investorReleaseAt = ANIMATION_CONFIG.investors.enterMs + ANIMATION_CONFIG.investors.actionFrameMs * 4;
+  const investorCycleMs = investorExitAt + ANIMATION_CONFIG.investors.exitMs;
   const directionFrames = [
     [16,101,250,573],[285,37,250,635],[550,33,255,637],[825,71,250,601],
     [1095,21,250,653],[1370,66,248,633],[1640,67,250,607],[1910,118,252,555]
-  ];
-  const boxFrames = [
-    [97,132,178,128],[441,131,156,135],[756,130,172,122],
-    [1094,114,222,149],[1415,124,242,149],[1756,132,176,129]
-  ];
-  const toxicFrames = [
-    [92,102,172,125],[403,98,230,136],[732,94,242,156],
-    [1074,80,242,181],[1415,78,242,183],[1756,109,220,152]
-  ];
-  const unicornFrames = [
-    [47,80,247,181],[398,55,228,231],[761,42,184,257],
-    [1078,79,233,183],[1418,74,236,193],[1765,71,224,199]
   ];
   const CRYING_CROPS = [
     [67,40,122,175],[321,43,126,170],[578,44,124,168],[835,39,121,178],
@@ -111,12 +139,14 @@
     [117,254,243,423],[73,192,289,485],[154,253,187,415],[95,200,289,472],
     [57,251,300,420],[141,250,193,427],[120,246,247,433],[117,285,249,395]
   ];
-  const ITEM_CHANCES = { unicorn:.04, toxic:.10 };   const INVESTOR_SCALES = [1,.9,1];
+  const ITEM_CHANCES = { unicorn:.04, toxic:.10 };
   const labels = ['AI','SaaS','WEB3','B2B','APP','$'];
-  const CATCH_START = .44;
-  const CATCH_END = .72;
-  const TOXIC_REJECT_END = .52;
-  const ITEM_RENDER_SIZE = 116;
+  const CATCH_START = .70;
+  const CATCH_END = .84;
+  const TOXIC_REJECT_END = .77;
+  const FLIGHT_SPEED_START = .00036;
+  const FLIGHT_SPEED_END = .00060;
+  const DIFFICULTY_RAMP_MS = 180000;
   const ACHIEVEMENT_STORAGE_KEY = 'kak-zhe-tak-oleg-achievements-v1';
   let game = fresh();
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
@@ -131,8 +161,7 @@
     try{localStorage.setItem(ACHIEVEMENT_STORAGE_KEY,JSON.stringify(game.achievements))}catch(error){}
   }
   function fresh(){
-    const firstActor=Math.floor(Math.random()*investorSprites.length);
-    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], lastActor:firstActor, playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], firstStartupSpawned:false, oneLifeSince:null, achievements:loadAchievements(), achievementQueue:[], achievement:null, achievementClock:0, gameOverSoundPending:false, gameOverSoundPlayed:false };
+    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], firstStartupSpawned:false, oneLifeSince:null, achievements:loadAchievements(), achievementQueue:[], achievement:null, achievementClock:0, gameOverSoundPending:false, gameOverSoundPlayed:false };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -172,7 +201,7 @@
   function poly(points,w=5){ctx.lineWidth=w;ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(...p):ctx.moveTo(...p));ctx.stroke()}
   function roundRect(x,y,w,h,r,fill=true,stroke=true){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill)ctx.fill();if(stroke)ctx.stroke()}
   function pathPoint(lane,t){
-    const p=lanes[lane],u=clamp(t,0,1),v=1-u;
+    const p=ANIMATION_CONFIG.trajectories[lane],u=clamp(t,0,1),v=1-u;
     return [
       v*v*v*p[0][0]+3*v*v*u*p[1][0]+3*v*u*u*p[2][0]+u*u*u*p[3][0],
       v*v*v*p[0][1]+3*v*v*u*p[1][1]+3*v*u*u*p[2][1]+u*u*u*p[3][1]
@@ -192,18 +221,22 @@
     ctx.save();ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,offset,0,width,H);ctx.restore();
   }
 
+  function horizontalFrame(image,frameCount,frame,x,y,width,height,rotation=0,mirror=false){
+    if(!image?.complete||!image.naturalWidth)return;
+    const index=clamp(frame,0,frameCount-1),sx=Math.round(index*image.naturalWidth/frameCount),ex=Math.round((index+1)*image.naturalWidth/frameCount);
+    ctx.save();ctx.translate(x+width/2,y+height/2);ctx.rotate(rotation);if(mirror)ctx.scale(-1,1);ctx.drawImage(image,sx,0,ex-sx,image.naturalHeight,-width/2,-height/2,width,height);ctx.restore();
+  }
+
   function animatedInvestors(floor){
+    const config=ANIMATION_CONFIG.investors,size=config.baseSize*config.scale;
     for(const lane of floor===0?[0,2]:[1,3]){
-      const timer=game.throwTimers[lane],actor=game.throwActors[lane];
-      if(timer>=900||actor<0)continue;
-      const image=investorSprites[actor];
-      if(!image?.complete||!image.naturalWidth)continue;
-      const frame=timer<100?0:timer<230?1:timer<360?2:timer<480?3:timer<610?4:timer<750?5:6;
-      const sw=image.naturalWidth/7,sh=image.naturalHeight,baseSize=270,scale=INVESTOR_SCALES[actor],dw=baseSize*scale,dh=baseSize*scale,dx=-6+(baseSize-dw)/2,dy=(floor===0?-5:235)+(baseSize-dh),side=lane>=2;
-      ctx.save();
-      if(side){ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,frame*sw,0,sw,sh,dx,dy,dw,dh)}
-      else ctx.drawImage(image,frame*sw,0,sw,sh,dx,dy,dw,dh);
-      ctx.restore();
+      const timer=game.throwTimers[lane],actor=game.throwActors[lane],position=config.positions[lane];
+      if(timer>=investorCycleMs||actor<0)continue;
+      let frame,y=position.y;
+      if(timer<config.enterMs){frame=0;y+=position.slide*(1-ease(timer/config.enterMs))}
+      else if(timer<investorExitAt)frame=1+Math.min(4,Math.floor((timer-config.enterMs)/config.actionFrameMs));
+      else{frame=6;y+=position.slide*ease((timer-investorExitAt)/config.exitMs)}
+      horizontalFrame(investorSprites[actor],config.frames,frame,position.x,y,size,size,0,position.mirror);
     }
   }
 
@@ -308,35 +341,32 @@
     ctx.restore();
   }
 
-  function spriteFrame(image,frames,frame,x,y,scale=1,mirror=false,loop=false,glow=false,normalizeArea=true){
-    if(!image.complete||!image.naturalWidth)return;
-    const src=frames[loop?frame%frames.length:Math.min(frames.length-1,frame)],reference=frames[0],referenceScale=ITEM_RENDER_SIZE/Math.max(reference[2],reference[3]),areaScale=normalizeArea?Math.sqrt((reference[2]*reference[3])/(src[2]*src[3])):1,dw=src[2]*referenceScale*areaScale*scale,dh=src[3]*referenceScale*areaScale*scale;
-    ctx.save();ctx.translate(x,y);if(mirror)ctx.scale(-1,1);if(glow){ctx.shadowColor='#f3ce4d';ctx.shadowBlur=10}ctx.drawImage(image,...src,-dw/2,-dh/2,dw,dh);ctx.restore();
+  function itemAnimation(item,elapsed){
+    const type=item.type==='startup'?'normal':item.type||'normal',config=ANIMATION_CONFIG.items[type],rawFrame=Math.floor(elapsed/config.frameMs),frame=config.mode==='loop'?rawFrame%ANIMATION_CONFIG.items.frames:Math.min(ANIMATION_CONFIG.items.frames-1,rawFrame);
+    const duration=config.frameMs*ANIMATION_CONFIG.items.frames;
+    const rotation=config.mode==='once-hold'
+      ? elapsed<duration
+        ? config.spin*(elapsed-elapsed*elapsed/(2*duration))
+        : config.spin*duration/2+config.holdSpin*(elapsed-duration)
+      : config.spin*elapsed;
+    return {frame,rotation};
   }
-  function startupBox(x,y,label,rotation=0,scale=1,frame=0){
-    spriteFrame(boxFlightSprites,boxFrames,frame,x,y,scale,false,true);
-  }
-  function specialItem(x,y,type,scale=1,frame=0,mirror=false){
-    const image=type==='unicorn'?unicornItemSprites:toxicItemSprites;
-    const frames=type==='unicorn'?unicornFrames:toxicFrames;
-    spriteFrame(image,frames,frame,x,y,scale,mirror,false,type==='unicorn',type!=='toxic');
-  }
-  function drawItem(x,y,item,scale=1,frame=0,rotation=Math.sin(item.progress*18)*.16){
-    if(item.type==='unicorn'||item.type==='toxic')specialItem(x,y,item.type,scale,frame,item.lane>=2);
-    else startupBox(x,y,item.label,rotation,scale,frame);
+  function drawItem(x,y,item,scale=1,elapsed=0,rotationOverride=null){
+    const type=item.type==='startup'?'normal':item.type||'normal',image=type==='unicorn'?unicornItemSprites:type==='toxic'?toxicItemSprites:boxFlightSprites;
+    const animation=itemAnimation(item,elapsed),size=ANIMATION_CONFIG.items.baseSize*ANIMATION_CONFIG.items.scale*scale;
+    horizontalFrame(image,ANIMATION_CONFIG.items.frames,animation.frame,x-size/2,y-size/2,size,size,rotationOverride??animation.rotation);
   }
   function startup(item){
     if(item.age<item.releaseAt)return;
-    const [x,y]=pathPoint(item.lane,ease(item.progress)),special=item.type==='unicorn'||item.type==='toxic';
-    const frame=item.type==='toxic'?Math.floor(item.progress*14):Math.floor(item.progress*(special?6:12));
-    drawItem(x,y,item,1,frame);
+    const [x,y]=pathPoint(item.lane,item.progress);
+    drawItem(x,y,item,1,item.age-item.releaseAt);
   }
   function caughtBox(){
     const a=game.catchAnim;if(!a||a.t>360)return;
     const p=clamp(a.t/360,0,1), q=1-Math.pow(1-p,3);
     const target=[480+(a.lane<2?-54:54),a.upper?255:340];
     const x=a.x+(target[0]-a.x)*q, y=a.y+(target[1]-a.y)*q-28*Math.sin(p*Math.PI);
-    drawItem(x,y,a,1,Math.floor(a.t/(a.type==='toxic'?35:60)),(1-p)*a.rotation);
+    drawItem(x,y,a,1,a.flightElapsed+a.t,(1-p)*a.rotation);
   }
 
   function drawPoop(p){
@@ -402,7 +432,7 @@
   }
 
   function smash(lane){
-    const end=lanes[lane][3];for(let i=0;i<7;i++)game.fragments.push({x:end[0]+(lane<2?-35:35),y:510,vx:(Math.random()-.5)*.28,vy:-Math.random()*.24-.08,rot:0,vr:(Math.random()-.5)*.014,life:90});
+    const end=ANIMATION_CONFIG.trajectories[lane][3];for(let i=0;i<7;i++)game.fragments.push({x:end[0]+(lane<2?-35:35),y:510,vx:(Math.random()-.5)*.28,vy:-Math.random()*.24-.08,rot:0,vr:(Math.random()-.5)*.014,life:90});
   }
   function celebrate(count=9){for(let i=0;i<count;i++)game.sparks.push({x:480+(Math.random()-.5)*100,y:320+(Math.random()-.5)*80,vx:(Math.random()-.5)*.08,vy:-Math.random()*.14-.03,life:650+Math.random()*350})}
   function rainDollars(){for(let i=0;i<42;i++)game.dollarRain.push({x:70+Math.random()*(W-140),y:-30-Math.random()*520,vy:.12+Math.random()*.12,drift:(Math.random()-.5)*.035,phase:Math.random()*Math.PI*2,size:22+Math.random()*20,life:3200+Math.random()*900})}
@@ -417,10 +447,11 @@
   function markOneLife(){if(game.lives===1&&game.oneLifeSince===null)game.oneLifeSince=game.playTime}
   function triggerGameover(){game.lives=0;game.running=false;game.reaction='gameover';game.reactionClock=0;game.catchAnim=null;game.hypeText='';game.hypeClock=0;game.message='РАЗОЧАРОВАНИЕ · СТАРТ — РЕВАНШ';game.gameOverSoundPending=true;if(game.caughtBoxes===0)unlockAchievement(5);playPendingGameoverSound()}
   function catchItem(item){
-    const [x,y]=pathPoint(item.lane,ease(item.progress));
+    const [x,y]=pathPoint(item.lane,item.progress);
     const type=item.type||'startup';
     game.lastDelta=type==='unicorn'?1000:type==='toxic'?-2000:200;
-    game.score+=game.lastDelta;game.reaction=type==='startup'?'catch':type;game.reactionClock=0;game.catchAnim={...item,upper:item.lane===0||item.lane===2,x,y,t:0,rotation:Math.sin(item.progress*18)*.16};
+    const flightElapsed=Math.max(0,item.age-item.releaseAt),rotation=itemAnimation(item,flightElapsed).rotation;
+    game.score+=game.lastDelta;game.reaction=type==='startup'?'catch':type;game.reactionClock=0;game.catchAnim={...item,upper:item.lane===0||item.lane===2,x,y,t:0,flightElapsed,rotation};
     if(type==='toxic'){game.catchStreak=0;game.agileStreak=0;game.pivotLanes=[];game.movedSinceCatch=false;game.lives=Math.max(0,game.lives-1);markOneLife();game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(olegLines.toxic);if(game.lives===0){triggerGameover();return}beep('toxic');return}
     let achievementUnlocked=game.score>=10000&&unlockAchievement(10);
     if(type==='startup'){
@@ -453,19 +484,19 @@
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;
     if(game.reaction==='catch'&&game.reactionClock>900){game.reaction=game.danceQueued?'dance':'idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА'}
     else if((game.reaction==='miss'&&game.reactionClock>1050)||(game.reaction==='unicorn'&&game.reactionClock>1250)||(game.reaction==='toxic'&&game.reactionClock>1100)||(game.reaction==='dance'&&game.reactionClock>1040)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message='ИГРА'}
-    const progress=clamp(game.playTime/180000,0,1),ramp=progress*progress*(3-2*progress);
-    const speed=.000175+ramp*.000165;spawnClock+=dt;
+    const progress=clamp(game.playTime/DIFFICULTY_RAMP_MS,0,1),ramp=progress*progress*(3-2*progress);
+    const speed=FLIGHT_SPEED_START+ramp*(FLIGHT_SPEED_END-FLIGHT_SPEED_START);spawnClock+=dt;
     const spawnEvery=1050-ramp*670;
     const cap=game.playTime>120000?4:game.playTime>45000?3:2;
     if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap){
       spawnClock=0;
-      const occupied=new Set(game.items.map(item=>item.lane)),free=[0,1,2,3].filter(lane=>!occupied.has(lane)&&game.throwTimers[lane]>=900),pool=free.length?free:[0,1,2,3].filter(lane=>!occupied.has(lane));
-      const lane=pool[Math.floor(Math.random()*pool.length)],actor=(game.lastActor+1)%investorSprites.length,releaseAt=750;
-      game.lastActor=actor;game.throwTimers[lane]=0;game.throwActors[lane]=actor;
+      const occupied=new Set(game.items.map(item=>item.lane)),free=[0,1,2,3].filter(lane=>!occupied.has(lane)&&game.throwTimers[lane]>=investorCycleMs),pool=free.length?free:[0,1,2,3].filter(lane=>!occupied.has(lane));
+      const lane=pool[Math.floor(Math.random()*pool.length)],actor=Math.floor(Math.random()*investorSprites.length),releaseAt=investorReleaseAt;
+      game.throwTimers[lane]=0;game.throwActors[lane]=actor;
       const type=rollItemType(),isFirstStartup=type==='startup'&&!game.firstStartupSpawned;if(isFirstStartup)game.firstStartupSpawned=true;
       game.items.push({id:id++,lane,actor,releaseAt,progress:0,age:0,type,isFirstStartup,label:labels[id%labels.length]});
     }
-    const survivors=[];for(const item of game.items){item.age+=dt;if(item.age>=item.releaseAt)item.progress+=dt*speed;if(item.type==='toxic'&&item.progress>=CATCH_START&&item.lane!==game.lane)item.rejected=true;if(item.rejected&&item.progress>=TOXIC_REJECT_END)continue;if(!item.rejected&&item.lane===game.lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=game.reaction==='gameover'?[]:survivors;
+    const survivors=[];for(const item of game.items){const previousFlightAge=Math.max(0,item.age-item.releaseAt);item.age+=dt;const flightAge=Math.max(0,item.age-item.releaseAt);item.progress+=(flightAge-previousFlightAge)*speed;if(item.type==='toxic'&&item.progress>=CATCH_START&&item.lane!==game.lane)item.rejected=true;if(item.rejected&&item.progress>=TOXIC_REJECT_END)continue;if(!item.rejected&&item.lane===game.lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END)catchItem(item);else if(item.progress>=1)missItem(item);else survivors.push(item)}game.items=game.reaction==='gameover'?[]:survivors;
   }
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
