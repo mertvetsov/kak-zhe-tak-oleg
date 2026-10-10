@@ -144,6 +144,9 @@
   const CATCH_START = .70;
   const CATCH_END = .84;
   const TOXIC_REJECT_END = .77;
+  const FLIGHT_SPEED_START = .00036;
+  const FLIGHT_SPEED_END = .00060;
+  const DIFFICULTY_RAMP_MS = 180000;
   const ACHIEVEMENT_STORAGE_KEY = 'kak-zhe-tak-oleg-achievements-v1';
   let game = fresh();
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
@@ -481,8 +484,8 @@
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;
     if(game.reaction==='catch'&&game.reactionClock>900){game.reaction=game.danceQueued?'dance':'idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА'}
     else if((game.reaction==='miss'&&game.reactionClock>1050)||(game.reaction==='unicorn'&&game.reactionClock>1250)||(game.reaction==='toxic'&&game.reactionClock>1100)||(game.reaction==='dance'&&game.reactionClock>1040)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message='ИГРА'}
-    const progress=clamp(game.playTime/180000,0,1),ramp=progress*progress*(3-2*progress);
-    const speed=.000175+ramp*.000165;spawnClock+=dt;
+    const progress=clamp(game.playTime/DIFFICULTY_RAMP_MS,0,1),ramp=progress*progress*(3-2*progress);
+    const speed=FLIGHT_SPEED_START+ramp*(FLIGHT_SPEED_END-FLIGHT_SPEED_START);spawnClock+=dt;
     const spawnEvery=1050-ramp*670;
     const cap=game.playTime>120000?4:game.playTime>45000?3:2;
     if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap){
