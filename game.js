@@ -108,7 +108,7 @@
       baseSize: 341,
       normal: { mode: 'loop', frameMs: 105, spin: .0022 },
       unicorn: { mode: 'loop', frameMs: 115, spin: -.0020 },
-      toxic: { mode: 'once-hold', frameMs: 130, spin: .0017 },
+      toxic: { mode: 'once-hold', frameMs: 130, spin: .0017, holdSpin: .00045 },
     },
     trajectories: [
       [[160,145],[340,28],[430,70],[455,300]],
@@ -141,9 +141,9 @@
   ];
   const ITEM_CHANCES = { unicorn:.04, toxic:.10 };
   const labels = ['AI','SaaS','WEB3','B2B','APP','$'];
-  const CATCH_START = .44;
-  const CATCH_END = .72;
-  const TOXIC_REJECT_END = .52;
+  const CATCH_START = .70;
+  const CATCH_END = .84;
+  const TOXIC_REJECT_END = .77;
   const ACHIEVEMENT_STORAGE_KEY = 'kak-zhe-tak-oleg-achievements-v1';
   let game = fresh();
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
@@ -342,7 +342,9 @@
     const type=item.type==='startup'?'normal':item.type||'normal',config=ANIMATION_CONFIG.items[type],rawFrame=Math.floor(elapsed/config.frameMs),frame=config.mode==='loop'?rawFrame%ANIMATION_CONFIG.items.frames:Math.min(ANIMATION_CONFIG.items.frames-1,rawFrame);
     const duration=config.frameMs*ANIMATION_CONFIG.items.frames;
     const rotation=config.mode==='once-hold'
-      ? config.spin*(elapsed<duration?elapsed-elapsed*elapsed/(2*duration):duration/2)
+      ? elapsed<duration
+        ? config.spin*(elapsed-elapsed*elapsed/(2*duration))
+        : config.spin*duration/2+config.holdSpin*(elapsed-duration)
       : config.spin*elapsed;
     return {frame,rotation};
   }
@@ -353,7 +355,7 @@
   }
   function startup(item){
     if(item.age<item.releaseAt)return;
-    const [x,y]=pathPoint(item.lane,ease(item.progress));
+    const [x,y]=pathPoint(item.lane,item.progress);
     drawItem(x,y,item,1,item.age-item.releaseAt);
   }
   function caughtBox(){
@@ -442,7 +444,7 @@
   function markOneLife(){if(game.lives===1&&game.oneLifeSince===null)game.oneLifeSince=game.playTime}
   function triggerGameover(){game.lives=0;game.running=false;game.reaction='gameover';game.reactionClock=0;game.catchAnim=null;game.hypeText='';game.hypeClock=0;game.message='РАЗОЧАРОВАНИЕ · СТАРТ — РЕВАНШ';game.gameOverSoundPending=true;if(game.caughtBoxes===0)unlockAchievement(5);playPendingGameoverSound()}
   function catchItem(item){
-    const [x,y]=pathPoint(item.lane,ease(item.progress));
+    const [x,y]=pathPoint(item.lane,item.progress);
     const type=item.type||'startup';
     game.lastDelta=type==='unicorn'?1000:type==='toxic'?-2000:200;
     const flightElapsed=Math.max(0,item.age-item.releaseAt),rotation=itemAnimation(item,flightElapsed).rotation;

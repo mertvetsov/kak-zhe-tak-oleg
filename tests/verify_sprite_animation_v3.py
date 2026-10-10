@@ -48,6 +48,9 @@ def main() -> None:
     assert "scale: .8" in game and "scale: .65" in game
     assert "baseSize: 292" in game and "baseSize: 341" in game
     assert "mode: 'once-hold'" in game
+    assert "holdSpin: .00045" in game
+    assert game.count("pathPoint(item.lane,item.progress)") == 2
+    assert "const CATCH_START = .70" in game and "const CATCH_END = .84" in game
     assert "cp -R assets resources .publish/" in workflow
 
     print("v3 sprite animation checks passed")
