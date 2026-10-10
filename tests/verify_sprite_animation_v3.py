@@ -51,6 +51,10 @@ def main() -> None:
     assert "holdSpin: .00045" in game
     assert game.count("pathPoint(item.lane,item.progress)") == 2
     assert "const CATCH_START = .70" in game and "const CATCH_END = .84" in game
+    assert "const FLIGHT_SPEED_START = .00036" in game
+    assert "const FLIGHT_SPEED_END = .00060" in game
+    assert "game.playTime/DIFFICULTY_RAMP_MS" in game
+    assert "FLIGHT_SPEED_START+ramp*(FLIGHT_SPEED_END-FLIGHT_SPEED_START)" in game
     assert "cp -R assets resources .publish/" in workflow
 
     print("v3 sprite animation checks passed")
