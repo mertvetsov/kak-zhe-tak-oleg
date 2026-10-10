@@ -40,7 +40,9 @@ def main() -> None:
         ) <= 1
 
     investor_block = game.split("function animatedInvestors", 1)[1].split("function house", 1)[0]
-    assert "scale(-1" not in investor_block, "investors must not be mirrored"
+    assert "position.mirror" in investor_block, "right-side investors must be mirrored"
+    assert game.count("mirror: false") == 2 and game.count("mirror: true") == 2
+    assert "Math.floor(Math.random()*investorSprites.length)" in game
     assert "Math.round(index*image.naturalWidth/frameCount)" in game
     assert "Math.round((index+1)*image.naturalWidth/frameCount)" in game
     assert "scale: .8" in game and "scale: .65" in game

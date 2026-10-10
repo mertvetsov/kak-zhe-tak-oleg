@@ -96,10 +96,10 @@
       actionFrameMs: 110,
       exitMs: 200,
       positions: [
-        { actor: 0, floor: 0, x: 12,  y: 31,  slide: 100 },
-        { actor: 1, floor: 1, x: 12,  y: 271, slide: 100 },
-        { actor: 2, floor: 0, x: 714, y: 31,  slide: 100 },
-        { actor: 0, floor: 1, x: 714, y: 271, slide: 100 },
+        { floor: 0, x: -18, y: 43,  slide: 100, mirror: false },
+        { floor: 1, x: -18, y: 283, slide: 100, mirror: false },
+        { floor: 0, x: 744, y: 43,  slide: 100, mirror: true },
+        { floor: 1, x: 744, y: 283, slide: 100, mirror: true },
       ],
     },
     items: {
@@ -111,10 +111,10 @@
       toxic: { mode: 'once-hold', frameMs: 130, spin: .0017 },
     },
     trajectories: [
-      [[185,140],[340,28],[430,70],[455,300]],
-      [[185,400],[320,300],[415,330],[455,430]],
-      [[885,140],[700,28],[555,70],[505,300]],
-      [[885,400],[700,300],[555,330],[505,430]],
+      [[160,145],[340,28],[430,70],[455,300]],
+      [[160,405],[320,300],[415,330],[455,430]],
+      [[800,145],[620,28],[530,70],[505,300]],
+      [[800,405],[640,300],[545,330],[505,430]],
     ],
   };
   const investorActionMs = ANIMATION_CONFIG.investors.actionFrameMs * 5;
@@ -158,7 +158,7 @@
     try{localStorage.setItem(ACHIEVEMENT_STORAGE_KEY,JSON.stringify(game.achievements))}catch(error){}
   }
   function fresh(){
-    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], firstStartupSpawned:false, oneLifeSince:null, achievements:loadAchievements(), achievementQueue:[], achievement:null, achievementClock:0, gameOverSoundPending:false, gameOverSoundPlayed:false };
+    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], firstStartupSpawned:false, oneLifeSince:null, achievements:loadAchievements(), achievementQueue:[], achievement:null, achievementClock:0, gameOverSoundPending:false, gameOverSoundPlayed:false };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -218,22 +218,22 @@
     ctx.save();ctx.translate(W,0);ctx.scale(-1,1);ctx.drawImage(image,offset,0,width,H);ctx.restore();
   }
 
-  function horizontalFrame(image,frameCount,frame,x,y,width,height,rotation=0){
+  function horizontalFrame(image,frameCount,frame,x,y,width,height,rotation=0,mirror=false){
     if(!image?.complete||!image.naturalWidth)return;
     const index=clamp(frame,0,frameCount-1),sx=Math.round(index*image.naturalWidth/frameCount),ex=Math.round((index+1)*image.naturalWidth/frameCount);
-    ctx.save();ctx.translate(x+width/2,y+height/2);ctx.rotate(rotation);ctx.drawImage(image,sx,0,ex-sx,image.naturalHeight,-width/2,-height/2,width,height);ctx.restore();
+    ctx.save();ctx.translate(x+width/2,y+height/2);ctx.rotate(rotation);if(mirror)ctx.scale(-1,1);ctx.drawImage(image,sx,0,ex-sx,image.naturalHeight,-width/2,-height/2,width,height);ctx.restore();
   }
 
   function animatedInvestors(floor){
     const config=ANIMATION_CONFIG.investors,size=config.baseSize*config.scale;
     for(const lane of floor===0?[0,2]:[1,3]){
-      const timer=game.throwTimers[lane],position=config.positions[lane];
-      if(timer>=investorCycleMs)continue;
+      const timer=game.throwTimers[lane],actor=game.throwActors[lane],position=config.positions[lane];
+      if(timer>=investorCycleMs||actor<0)continue;
       let frame,y=position.y;
       if(timer<config.enterMs){frame=0;y+=position.slide*(1-ease(timer/config.enterMs))}
       else if(timer<investorExitAt)frame=1+Math.min(4,Math.floor((timer-config.enterMs)/config.actionFrameMs));
       else{frame=6;y+=position.slide*ease((timer-investorExitAt)/config.exitMs)}
-      horizontalFrame(investorSprites[position.actor],config.frames,frame,position.x,y,size,size);
+      horizontalFrame(investorSprites[actor],config.frames,frame,position.x,y,size,size,0,position.mirror);
     }
   }
 
@@ -486,8 +486,8 @@
     if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap){
       spawnClock=0;
       const occupied=new Set(game.items.map(item=>item.lane)),free=[0,1,2,3].filter(lane=>!occupied.has(lane)&&game.throwTimers[lane]>=investorCycleMs),pool=free.length?free:[0,1,2,3].filter(lane=>!occupied.has(lane));
-      const lane=pool[Math.floor(Math.random()*pool.length)],actor=ANIMATION_CONFIG.investors.positions[lane].actor,releaseAt=investorReleaseAt;
-      game.throwTimers[lane]=0;
+      const lane=pool[Math.floor(Math.random()*pool.length)],actor=Math.floor(Math.random()*investorSprites.length),releaseAt=investorReleaseAt;
+      game.throwTimers[lane]=0;game.throwActors[lane]=actor;
       const type=rollItemType(),isFirstStartup=type==='startup'&&!game.firstStartupSpawned;if(isFirstStartup)game.firstStartupSpawned=true;
       game.items.push({id:id++,lane,actor,releaseAt,progress:0,age:0,type,isFirstStartup,label:labels[id%labels.length]});
     }
