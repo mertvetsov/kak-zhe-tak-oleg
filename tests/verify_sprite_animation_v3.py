@@ -2,6 +2,7 @@
 """Repository-level checks for the v3 investor and item sprite update."""
 
 from pathlib import Path
+import json
 import struct
 
 
@@ -10,9 +11,15 @@ ASSETS = {
     "investor-young-7-frames-v3.png": (2048, 292, 7),
     "investor-businesswoman-7-frames-v3.png": (2048, 292, 7),
     "investor-banker-7-frames-v3.png": (2048, 292, 7),
+    "investor-dirty-briefs-7x512-v2.png": (3584, 512, 7),
     "item-box-normal-6-frames-v3.png": (2048, 341, 6),
     "item-box-toxic-6-frames-v3.png": (2048, 341, 6),
     "item-unicorn-6-frames-v3.png": (2048, 341, 6),
+    "item-dirty-briefs-6x512.png": (3072, 512, 6),
+    "oleg-left-low-dirty-briefs.png": (988, 1592, 1),
+    "oleg-left-low-box-dirty-briefs.png": (988, 1591, 1),
+    "oleg-left-up-dirty-briefs.png": (988, 1591, 1),
+    "oleg-left-up-box-dirty-briefs.png": (988, 1591, 1),
     "oleg-cringe-butt-dance-loop-7x512.png": (3584, 512, 7),
     "oleg-cringe-chicken-shimmy-loop-7x512.png": (3584, 512, 7),
     "oleg-dropped-box-cry-loop-7x512-v2.png": (3584, 512, 7),
@@ -30,6 +37,8 @@ def png_header(path: Path) -> tuple[int, int, int]:
 def main() -> None:
     game = (ROOT / "game.js").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/pr-preview.yml").read_text(encoding="utf-8")
+    underwear_lines = json.loads((ROOT / "resources" / "underwear-exclamations.json").read_text(encoding="utf-8"))
+    assert len(underwear_lines) == 3 and all(isinstance(line, str) and line for line in underwear_lines)
     background = ROOT / "assets" / "oleg-new-background-green.png"
     assert png_header(background)[:2] == (1584, 993), "new background dimensions"
     assert "assets/oleg-new-background-green.png" in game, "new background not connected"
@@ -49,7 +58,9 @@ def main() -> None:
     investor_block = game.split("function animatedInvestors", 1)[1].split("function house", 1)[0]
     assert "position.mirror" in investor_block, "right-side investors must be mirrored"
     assert game.count("mirror: false") == 2 and game.count("mirror: true") == 2
-    assert "Math.floor(Math.random()*investorSprites.length)" in game
+    assert "Math.random()<UNDERWEAR_INVESTOR_CHANCE?UNDERWEAR_INVESTOR_INDEX" in game
+    assert "actor===UNDERWEAR_INVESTOR_INDEX?'underwear':rollItemType()" in game
+    assert "baseSize=type==='underwear'?512:ANIMATION_CONFIG.items.baseSize" in game
     assert "Math.round(index*image.naturalWidth/frameCount)" in game
     assert "Math.round((index+1)*image.naturalWidth/frameCount)" in game
     assert "scale: .8" in game and "scale: .65" in game
@@ -74,10 +85,15 @@ def main() -> None:
     assert game.count("horizontalFrame(toxicSurpriseSprites,7,frame,480-size/2,y,size,size,0,game.missLane>=2)") == 2
     assert "game.gameOverCause==='toxic'" in game
     assert "5+Math.floor((elapsed-openingDuration)/220)%2" in game
-    assert "triggerGameover('toxic')" in game
+    assert "triggerGameover(lostWhileBlind?'miss':'toxic')" in game
     assert "filter.frequency.exponentialRampToValueAtTime(120,t+.82)" in game
-    assert "['miss','toxic','dance'].includes(game.reaction)" in game
-    assert "interruptReaction();if(lane!==game.lane)" in game
+    assert "underwearEffect:{active:false,remainingMs:0,durationMs:UNDERWEAR_EFFECT_DURATION_MS}" in game
+    assert "const lane=game.underwearEffect.active?3-requestedLane:requestedLane" in game
+    assert "game.underwearEffect.remainingMs=Math.max(0,game.underwearEffect.remainingMs-dt)" in game
+    assert "deactivateUnderwearEffect(false);game.lives=0" in game
+    assert "if(item.type==='toxic'||item.type==='underwear')return" in game
+    assert "['miss','toxic','underwear','dance'].includes(game.reaction)" in game
+    assert "interruptReaction();const lane=game.underwearEffect.active?3-requestedLane:requestedLane;if(lane!==game.lane)" in game
     assert game.count("pathPoint(item.lane,item.progress)") == 2
     assert "const CATCH_START = .70" in game and "const CATCH_END = .84" in game
     assert "const FLIGHT_SPEED_START = .00036" in game
