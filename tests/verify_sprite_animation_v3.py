@@ -48,7 +48,9 @@ def main() -> None:
     assert "scale: .8" in game and "scale: .65" in game
     assert "baseSize: 292" in game and "baseSize: 341" in game
     assert "mode: 'once-hold'" in game
-    assert "holdSpin: .00045" in game
+    assert "holdSpin: .0032" in game
+    assert "(config.holdSpin-config.spin)*elapsed*elapsed/(2*duration)" in game
+    assert "a.type==='toxic'?itemAnimation(a,a.flightElapsed+a.t).rotation" in game
     assert game.count("pathPoint(item.lane,item.progress)") == 2
     assert "const CATCH_START = .70" in game and "const CATCH_END = .84" in game
     assert "const FLIGHT_SPEED_START = .00036" in game
