@@ -268,11 +268,10 @@
   }
 
   function animatedInvestors(floor){
-    const config=ANIMATION_CONFIG.investors;
+    const config=ANIMATION_CONFIG.investors,size=config.baseSize*config.scale;
     for(const lane of floor===0?[0,2]:[1,3]){
       const timer=game.throwTimers[lane],actor=game.throwActors[lane],position=config.positions[lane];
       if(timer>=investorCycleMs||actor<0)continue;
-      const size=(actor===UNDERWEAR_INVESTOR_INDEX?512:config.baseSize)*config.scale;
       let frame,y=position.y;
       if(timer<config.enterMs){frame=0;y+=position.slide*(1-ease(timer/config.enterMs))}
       else if(timer<investorExitAt)frame=1+Math.min(4,Math.floor((timer-config.enterMs)/config.actionFrameMs));
@@ -415,7 +414,7 @@
   }
   function drawItem(x,y,item,scale=1,elapsed=0,rotationOverride=null){
     const type=item.type==='startup'?'normal':item.type||'normal',image=type==='unicorn'?unicornItemSprites:type==='toxic'?toxicItemSprites:type==='underwear'?underwearItemSprites:boxFlightSprites;
-    const animation=itemAnimation(item,elapsed),baseSize=type==='underwear'?512:ANIMATION_CONFIG.items.baseSize,size=baseSize*ANIMATION_CONFIG.items.scale*scale;
+    const animation=itemAnimation(item,elapsed),size=ANIMATION_CONFIG.items.baseSize*ANIMATION_CONFIG.items.scale*scale;
     horizontalFrame(image,ANIMATION_CONFIG.items.frames,animation.frame,x-size/2,y-size/2,size,size,rotationOverride??animation.rotation);
   }
   function startup(item){
@@ -574,7 +573,7 @@
 
   function start(){if(!assetsReady)return;game=fresh();game.running=true;game.message='ИГРА';spawnClock=9999;overlay.classList.add('hidden');pauseButton.textContent='ПАУЗА';beep('start')}
   function interruptReaction(){if(!['miss','toxic','underwear','dance'].includes(game.reaction))return;game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА'}
-  function choose(requestedLane){if(!game.running||game.paused)return;interruptReaction();const lane=game.underwearEffect.active?3-requestedLane:requestedLane;if(lane!==game.lane)game.movedSinceCatch=true;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
+  function choose(requestedLane){if(!game.running||game.paused)return;interruptReaction();const lane=game.underwearEffect.active?(requestedLane+2)%4:requestedLane;if(lane!==game.lane)game.movedSinceCatch=true;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
   function pause(){if(!game.running)return;game.paused=!game.paused;game.message=game.paused?'ПАУЗА':'ИГРА';pauseButton.textContent=game.paused?'ПРОДОЛЖИТЬ':'ПАУЗА'}
 
   laneButtons.forEach(b=>b.addEventListener('pointerdown',()=>choose(+b.dataset.lane)));

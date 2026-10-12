@@ -60,7 +60,6 @@ def main() -> None:
     assert game.count("mirror: false") == 2 and game.count("mirror: true") == 2
     assert "Math.random()<UNDERWEAR_INVESTOR_CHANCE?UNDERWEAR_INVESTOR_INDEX" in game
     assert "actor===UNDERWEAR_INVESTOR_INDEX?'underwear':rollItemType()" in game
-    assert "baseSize=type==='underwear'?512:ANIMATION_CONFIG.items.baseSize" in game
     assert "Math.round(index*image.naturalWidth/frameCount)" in game
     assert "Math.round((index+1)*image.naturalWidth/frameCount)" in game
     assert "scale: .8" in game and "scale: .65" in game
@@ -88,12 +87,12 @@ def main() -> None:
     assert "triggerGameover(lostWhileBlind?'miss':'toxic')" in game
     assert "filter.frequency.exponentialRampToValueAtTime(120,t+.82)" in game
     assert "underwearEffect:{active:false,remainingMs:0,durationMs:UNDERWEAR_EFFECT_DURATION_MS}" in game
-    assert "const lane=game.underwearEffect.active?3-requestedLane:requestedLane" in game
+    assert "const lane=game.underwearEffect.active?(requestedLane+2)%4:requestedLane" in game
     assert "game.underwearEffect.remainingMs=Math.max(0,game.underwearEffect.remainingMs-dt)" in game
     assert "deactivateUnderwearEffect(false);game.lives=0" in game
     assert "if(item.type==='toxic'||item.type==='underwear')return" in game
     assert "['miss','toxic','underwear','dance'].includes(game.reaction)" in game
-    assert "interruptReaction();const lane=game.underwearEffect.active?3-requestedLane:requestedLane;if(lane!==game.lane)" in game
+    assert "interruptReaction();const lane=game.underwearEffect.active?(requestedLane+2)%4:requestedLane;if(lane!==game.lane)" in game
     assert game.count("pathPoint(item.lane,item.progress)") == 2
     assert "const CATCH_START = .70" in game and "const CATCH_END = .84" in game
     assert "const FLIGHT_SPEED_START = .00036" in game
