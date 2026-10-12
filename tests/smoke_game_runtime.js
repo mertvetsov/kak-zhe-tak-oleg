@@ -53,11 +53,20 @@ global.document = {
   },
   querySelectorAll: () => laneButtons,
 };
-global.localStorage = { getItem: () => null, setItem: noop };
+global.localStorage = new Proxy({}, {
+  get() { throw new Error('game should not access localStorage'); },
+});
 global.getComputedStyle = () => ({ getPropertyValue: () => '#26301d' });
-global.fetch = async () => ({ ok: true, json: async () => ({ catch: ['ok'], unicorn: ['ok'], toxic: ['ok'] }) });
+global.fetch = async url => ({ ok: true, json: async () => String(url).includes('underwear-exclamations') ? ['ok'] : ({ catch: ['ok'], unicorn: ['ok'], toxic: ['ok'] }) });
 global.addEventListener = noop;
 global.window = global;
+let audioResumeCalls = 0;
+global.AudioContext = class AudioContext {
+  constructor() { this.state = 'suspended'; this.currentTime = 0; this.destination = {}; this.sampleRate = 44100; }
+  resume() { audioResumeCalls += 1; this.state = 'running'; return Promise.resolve(); }
+  createOscillator() { return { frequency: {}, connect() { return this; }, start: noop, stop: noop }; }
+  createGain() { return { gain: { setValueAtTime: noop, exponentialRampToValueAtTime: noop }, connect() { return this; } }; }
+};
 
 let nextFrame;
 global.requestAnimationFrame = callback => { nextFrame = callback; return 1; };
@@ -68,6 +77,8 @@ require(path.join(__dirname, '..', 'game.js'));
   await new Promise(resolve => setImmediate(resolve));
   if (start.disabled) throw new Error('assets never became ready');
   handlers.get('start:click')();
+  await new Promise(resolve => setImmediate(resolve));
+  if (audioResumeCalls !== 1) throw new Error('audio context was not resumed on start');
 
   const startedAt = performance.now();
   for (let index = 1; index <= 600; index += 1) {
