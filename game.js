@@ -98,10 +98,10 @@
   };
   const loadUnderwearLines=async()=>{
     try{
-      const response=await fetch('resources/underwear-exclamations.json?v=1');
+      const response=await fetch('resources/underwear-exclamations.json?v=2');
       if(!response.ok)throw new Error(`HTTP ${response.status}`);
       const data=await response.json();
-      if(!Array.isArray(data)||!data.length||!data.every(line=>typeof line==='string'&&line.trim()))throw new Error('Invalid underwear exclamations file');
+      if(!['activate','deactivate'].every(group=>Array.isArray(data[group])&&data[group].length&&data[group].every(line=>typeof line==='string'&&line.trim())))throw new Error('Invalid underwear exclamations file');
       underwearLines=data;return true;
     }catch(error){console.error('Не удалось загрузить реплики эффекта трусов',error);return false}
     finally{updateLoadStatus()}
@@ -224,7 +224,8 @@
         [523,659,784].forEach(frequency=>tone(frequency,1.12,.36,'triangle',.035));return;
       }
       if(kind==='underwearOn'){
-        [[740,0],[310,.07],[920,.15],[230,.24]].forEach(([frequency,offset],i)=>tone(frequency,offset,.16,i%2?'sawtooth':'square',.045));return;
+        [[196,0],[784,.08],[247,.17],[988,.27],[165,.39],[1319,.52]].forEach(([frequency,offset],i)=>tone(frequency,offset,.2,i%2?'sawtooth':'square',.055));
+        [98,123,147].forEach((frequency,i)=>tone(frequency,.08+i*.15,.42,'triangle',.035));return;
       }
       if(kind==='underwearOff'){
         [330,440,660,880].forEach((frequency,i)=>tone(frequency,i*.065,.15,'triangle',.042));return;
@@ -502,8 +503,8 @@
   function burstChampion(){for(let i=0;i<64;i++){const angle=Math.PI*2*i/64+(Math.random()-.5)*.16,speed=.13+Math.random()*.19;game.championBurst.push({kind:i%3?'star':'dollar',x:480+Math.cos(angle)*38,y:345+Math.sin(angle)*46,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-.025,rot:Math.random()*Math.PI*2,vr:(Math.random()-.5)*.018,size:5+Math.random()*7,life:850+Math.random()*650})}}
   function burstPoop(){for(let i=0;i<18;i++){const angle=-Math.PI*.92+Math.random()*Math.PI*.84,speed=.13+Math.random()*.18;game.poopBurst.push({x:480+(Math.random()-.5)*45,y:365+(Math.random()-.5)*55,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-.05,rot:Math.random()*Math.PI*2,vr:(Math.random()-.5)*.012,size:7+Math.random()*6,life:850+Math.random()*550})}}
   function showHype(lines){game.hypeText=lines[Math.floor(Math.random()*lines.length)];game.hypeClock=0}
-  function activateUnderwearEffect(){game.underwearEffect.active=true;game.underwearEffect.remainingMs=game.underwearEffect.durationMs;showHype(underwearLines);beep('underwearOn')}
-  function deactivateUnderwearEffect(playSound=true){if(!game.underwearEffect.active)return;game.underwearEffect.active=false;game.underwearEffect.remainingMs=0;if(playSound)beep('underwearOff')}
+  function activateUnderwearEffect(){game.underwearEffect.active=true;game.underwearEffect.remainingMs=game.underwearEffect.durationMs;showHype(underwearLines.activate);beep('underwearOn')}
+  function deactivateUnderwearEffect(playSound=true){if(!game.underwearEffect.active)return;game.underwearEffect.active=false;game.underwearEffect.remainingMs=0;if(playSound){showHype(underwearLines.deactivate);beep('underwearOff')}}
   function updateUnderwearEffect(dt){if(!game.underwearEffect.active)return;game.underwearEffect.remainingMs=Math.max(0,game.underwearEffect.remainingMs-dt);if(game.underwearEffect.remainingMs===0)deactivateUnderwearEffect()}
   function rollItemType(){const roll=Math.random();return roll<ITEM_CHANCES.unicorn?'unicorn':roll<ITEM_CHANCES.unicorn+ITEM_CHANCES.toxic?'toxic':'startup'}
   function formatTime(ms){const seconds=Math.floor(ms/1000),minutes=Math.floor(seconds/60);return `${String(minutes).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`}
@@ -573,7 +574,7 @@
 
   function start(){if(!assetsReady)return;game=fresh();game.running=true;game.message='ИГРА';spawnClock=9999;overlay.classList.add('hidden');pauseButton.textContent='ПАУЗА';beep('start')}
   function interruptReaction(){if(!['miss','toxic','underwear','dance'].includes(game.reaction))return;game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА'}
-  function choose(requestedLane){if(!game.running||game.paused)return;interruptReaction();const lane=game.underwearEffect.active?(requestedLane+2)%4:requestedLane;if(lane!==game.lane)game.movedSinceCatch=true;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
+  function choose(requestedLane){if(!game.running||game.paused)return;interruptReaction();const lane=game.underwearEffect.active?3-requestedLane:requestedLane;if(lane!==game.lane)game.movedSinceCatch=true;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
   function pause(){if(!game.running)return;game.paused=!game.paused;game.message=game.paused?'ПАУЗА':'ИГРА';pauseButton.textContent=game.paused?'ПРОДОЛЖИТЬ':'ПАУЗА'}
 
   laneButtons.forEach(b=>b.addEventListener('pointerdown',()=>choose(+b.dataset.lane)));

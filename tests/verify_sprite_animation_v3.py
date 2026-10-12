@@ -38,7 +38,9 @@ def main() -> None:
     game = (ROOT / "game.js").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/pr-preview.yml").read_text(encoding="utf-8")
     underwear_lines = json.loads((ROOT / "resources" / "underwear-exclamations.json").read_text(encoding="utf-8"))
-    assert len(underwear_lines) == 3 and all(isinstance(line, str) and line for line in underwear_lines)
+    assert set(underwear_lines) == {"activate", "deactivate"}
+    assert all(len(underwear_lines[group]) == 3 for group in underwear_lines)
+    assert all(isinstance(line, str) and line for group in underwear_lines.values() for line in group)
     background = ROOT / "assets" / "oleg-new-background-green.png"
     assert png_header(background)[:2] == (1584, 993), "new background dimensions"
     assert "assets/oleg-new-background-green.png" in game, "new background not connected"
@@ -87,12 +89,14 @@ def main() -> None:
     assert "triggerGameover(lostWhileBlind?'miss':'toxic')" in game
     assert "filter.frequency.exponentialRampToValueAtTime(120,t+.82)" in game
     assert "underwearEffect:{active:false,remainingMs:0,durationMs:UNDERWEAR_EFFECT_DURATION_MS}" in game
-    assert "const lane=game.underwearEffect.active?(requestedLane+2)%4:requestedLane" in game
+    assert "const lane=game.underwearEffect.active?3-requestedLane:requestedLane" in game
+    assert "showHype(underwearLines.activate);beep('underwearOn')" in game
+    assert "showHype(underwearLines.deactivate);beep('underwearOff')" in game
     assert "game.underwearEffect.remainingMs=Math.max(0,game.underwearEffect.remainingMs-dt)" in game
     assert "deactivateUnderwearEffect(false);game.lives=0" in game
     assert "if(item.type==='toxic'||item.type==='underwear')return" in game
     assert "['miss','toxic','underwear','dance'].includes(game.reaction)" in game
-    assert "interruptReaction();const lane=game.underwearEffect.active?(requestedLane+2)%4:requestedLane;if(lane!==game.lane)" in game
+    assert "interruptReaction();const lane=game.underwearEffect.active?3-requestedLane:requestedLane;if(lane!==game.lane)" in game
     assert game.count("pathPoint(item.lane,item.progress)") == 2
     assert "const CATCH_START = .70" in game and "const CATCH_END = .84" in game
     assert "const FLIGHT_SPEED_START = .00036" in game
