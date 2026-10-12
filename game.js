@@ -584,11 +584,12 @@
     else choose(game.lane<2?1:3);
   }
   function pause(){if(!game.running)return;game.paused=!game.paused;game.message=game.paused?'ПАУЗА':'ИГРА';pauseButton.textContent=game.paused?'ПРОДОЛЖИТЬ':'ПАУЗА'}
+  function toggleSound(){sound=!sound;soundButton.setAttribute('aria-label',`Звук ${sound?'включён':'выключен'}`);soundButton.setAttribute('aria-pressed',String(sound));if(sound)beep('move')}
 
   laneButtons.forEach(b=>b.addEventListener('pointerdown',()=>chooseButton(+b.dataset.lane)));
   startButton.addEventListener('click',start);
   pauseButton.addEventListener('click',pause);
-  soundButton.addEventListener('click',()=>{sound=!sound;soundButton.textContent=`ЗВУК: ${sound?'ВКЛ':'ВЫКЛ'}`;soundButton.setAttribute('aria-pressed',String(sound));if(sound)beep('move')});
-  addEventListener('keydown',e=>{const direction=({ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'})[e.key];if(e.key===' '){e.preventDefault();pause()}else if(direction){e.preventDefault();move(direction)}});
+  soundButton.addEventListener('click',toggleSound);
+  addEventListener('keydown',e=>{const direction=({ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'})[e.key];if(e.key==='Control'){e.preventDefault();toggleSound()}else if(e.key===' '){e.preventDefault();pause()}else if(direction){e.preventDefault();move(direction)}});
   requestAnimationFrame(frame);
 })();
