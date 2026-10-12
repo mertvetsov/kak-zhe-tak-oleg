@@ -19,7 +19,8 @@
   const userLeftLowBox = new Image();
   const userLeftUp = new Image();
   const userLeftUpBox = new Image();
-  const userLeftDropped = new Image();
+  const droppedCrySprites = new Image();
+  const toxicSurpriseSprites = new Image();
   const investorSprites = Array.from({length:3},()=>new Image());
   const balconyBack = new Image();
   const balconyFrontUp = new Image();
@@ -29,7 +30,7 @@
   const cryingSprites = new Image();
   const achievementSprites = new Image();
   const newAchievementSprites = new Image();
-  const danceFrames = Array.from({length:8},()=>new Image());
+  const danceSprites = [new Image(),new Image()];
   const SPRITE_ASSETS = {
     investors: [
       'assets/investor-young-7-frames-v3.png',
@@ -42,14 +43,15 @@
       unicorn: 'assets/item-unicorn-6-frames-v3.png',
     },
   };
-  backgroundArt.src = 'assets/lcd-background-no-houses-user-v8.png';
+  backgroundArt.src = 'assets/oleg-new-background-green.png';
   olegSprites.src = 'assets/oleg-sprites.png';
   emotionSprites.src = 'assets/oleg-emotions-v2.png';
   userLeftLow.src = 'assets/oleg-left-low-user-v4.png';
   userLeftLowBox.src = 'assets/oleg-left-low-caught-user-v4.png';
   userLeftUp.src = 'assets/oleg-left-up-user-v4.png';
   userLeftUpBox.src = 'assets/oleg-left-up-caught-user-v4.png';
-  userLeftDropped.src = 'assets/oleg-left-dropped-user-v4.png';
+  droppedCrySprites.src = 'assets/oleg-dropped-box-cry-loop-7x512-v2.png';
+  toxicSurpriseSprites.src = 'assets/oleg-toxic-surprise-7x512-v4-style-match.png';
   SPRITE_ASSETS.investors.forEach((source,index)=>investorSprites[index].src=source);
   balconyBack.src = 'assets/balcony-back-two-floor-user-v9.png';
   balconyFrontUp.src = 'assets/balcony-front-up-user-v9.png';
@@ -60,9 +62,10 @@
   cryingSprites.src = 'assets/oleg-crying-v1.png';
   achievementSprites.src = 'assets/startup-achievements-v2.png';
   newAchievementSprites.src = 'assets/startup-achievements-07-11-v1.png';
-  danceFrames.forEach((image,i)=>image.src=`assets/oleg-dance-${String(i+1).padStart(2,'0')}-v1.png`);
+  danceSprites[0].src = 'assets/oleg-cringe-butt-dance-loop-7x512.png';
+  danceSprites[1].src = 'assets/oleg-cringe-chicken-shimmy-loop-7x512.png';
 
-  const allAssets = [backgroundArt,olegSprites,emotionSprites,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,userLeftDropped,...investorSprites,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,cryingSprites,achievementSprites,newAchievementSprites,...danceFrames];
+  const allAssets = [backgroundArt,olegSprites,emotionSprites,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,droppedCrySprites,toxicSurpriseSprites,...investorSprites,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,cryingSprites,achievementSprites,newAchievementSprites,...danceSprites];
   const resourceCount=allAssets.length+1;
   let assetsReady=false,loadedAssets=0,olegLines=null;
   const updateLoadStatus=()=>{loadedAssets++;overlayStatus.textContent=`${loadedAssets} / ${resourceCount}`};
@@ -135,10 +138,6 @@
     [1,55,80,806,244],[1,914,80,806,244],[1,55,350,806,244],
     [1,914,350,806,244],[1,55,620,806,244]
   ];
-  const DANCE_CROPS = [
-    [117,254,243,423],[73,192,289,485],[154,253,187,415],[95,200,289,472],
-    [57,251,300,420],[141,250,193,427],[120,246,247,433],[117,285,249,395]
-  ];
   const ITEM_CHANCES = { unicorn:.04, toxic:.10 };
   const labels = ['AI','SaaS','WEB3','B2B','APP','$'];
   const CATCH_START = .70;
@@ -147,11 +146,18 @@
   const FLIGHT_SPEED_START = .00036;
   const FLIGHT_SPEED_END = .00060;
   const DIFFICULTY_RAMP_MS = 180000;
+  const DANCE_FRAME_MS = 100;
+  const DANCE_DURATION_MS = 1600;
+  const DANCE_FOOT_Y = 499;
+  const DROPPED_CRY_FRAME_MS = 120;
+  const DROPPED_CRY_FOOT_Y = 499;
+  const TOXIC_REACTION_FRAME_MS = 140;
+  const TOXIC_REACTION_FOOT_Y = 499;
   let game = fresh();
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
   function fresh(){
-    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], championBurst:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], firstStartupSpawned:false, oneLifeSince:null, achievements:Array(ACHIEVEMENT_CROPS.length).fill(false), achievementQueue:[], achievement:null, achievementClock:0, gameOverSoundPending:false, gameOverSoundPlayed:false };
+    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], championBurst:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, danceIndex:0, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], firstStartupSpawned:false, oneLifeSince:null, achievements:Array(ACHIEVEMENT_CROPS.length).fill(false), achievementQueue:[], achievement:null, achievementClock:0, gameOverCause:null, gameOverStartedAt:0, gameOverSoundPending:false, gameOverSoundPlayed:false };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -163,6 +169,7 @@
     if(!sound) return;
     try{
       audio ||= new (window.AudioContext||window.webkitAudioContext)();
+      if(audio.state==='suspended'){audio.resume().then(()=>beep(kind)).catch(()=>{});return}
       const tone=(frequency,offset,duration,type='square',volume=.04)=>{const o=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime+offset;o.type=type;o.frequency.value=frequency;g.gain.setValueAtTime(volume,t);g.gain.exponentialRampToValueAtTime(.001,t+duration);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+duration+.01)};
       if(kind==='unicorn'){
         [[523,0],[659,.11],[784,.22],[1047,.36],[1319,.5]].forEach(([frequency,offset])=>{tone(frequency,offset,.24,'triangle',.06);tone(frequency/2,offset,.18,'square',.018)});
@@ -170,15 +177,24 @@
         tone(2093,.72,.5,'sine',.035);return;
       }
       if(kind==='toxic'){
-        [185,128,82].forEach((frequency,i)=>tone(frequency,i*.07,.2,'sawtooth',.045));
-        const length=Math.floor(audio.sampleRate*.24),buffer=audio.createBuffer(1,length,audio.sampleRate),data=buffer.getChannelData(0);
-        for(let i=0;i<length;i++)data[i]=(Math.random()*2-1)*(1-i/length);
-        const source=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain(),t=audio.currentTime;
-        source.buffer=buffer;filter.type='lowpass';filter.frequency.value=520;gain.gain.setValueAtTime(.065,t);gain.gain.exponentialRampToValueAtTime(.001,t+.24);source.connect(filter).connect(gain).connect(audio.destination);source.start(t);return;
+        const t=audio.currentTime;
+        [[118,0,.48],[92,.12,.58],[71,.3,.72]].forEach(([frequency,offset,duration],i)=>{
+          const oscillator=audio.createOscillator(),gain=audio.createGain();
+          oscillator.type=i===1?'square':'sawtooth';oscillator.frequency.setValueAtTime(frequency,t+offset);oscillator.frequency.exponentialRampToValueAtTime(Math.max(38,frequency*.48),t+offset+duration);
+          gain.gain.setValueAtTime(i===1?.022:.05,t+offset);gain.gain.exponentialRampToValueAtTime(.001,t+offset+duration);oscillator.connect(gain).connect(audio.destination);oscillator.start(t+offset);oscillator.stop(t+offset+duration+.02);
+        });
+        const length=Math.floor(audio.sampleRate*.82),buffer=audio.createBuffer(1,length,audio.sampleRate),data=buffer.getChannelData(0);
+        for(let i=0;i<length;i++){const progress=i/length,pulse=.55+.45*Math.sin(progress*Math.PI*13);data[i]=(Math.random()*2-1)*pulse*Math.pow(1-progress,1.8)}
+        const source=audio.createBufferSource(),filter=audio.createBiquadFilter(),gain=audio.createGain();
+        source.buffer=buffer;filter.type='lowpass';filter.frequency.setValueAtTime(680,t);filter.frequency.exponentialRampToValueAtTime(120,t+.82);gain.gain.setValueAtTime(.105,t);gain.gain.exponentialRampToValueAtTime(.001,t+.82);source.connect(filter).connect(gain).connect(audio.destination);source.start(t);source.stop(t+.84);return;
       }
       if(kind==='achievement'){
         [523,659,784,1047].forEach((frequency,i)=>tone(frequency,i*.08,.22,'square',.045));
         [1319,1568].forEach((frequency,i)=>tone(frequency,.34+i*.08,.28,'triangle',.055));return;
+      }
+      if(kind==='dance'){
+        [[392,0],[523,.12],[659,.24],[523,.36],[784,.5],[659,.64],[1047,.8],[784,.96]].forEach(([frequency,offset])=>{tone(frequency,offset,.18,'square',.035);tone(frequency/2,offset,.2,'triangle',.026)});
+        [523,659,784].forEach(frequency=>tone(frequency,1.12,.36,'triangle',.035));return;
       }
       if(kind==='over'){
         tone(392,0,.28,'square',.045);tone(330,.34,.28,'square',.043);tone(262,.68,1.28,'triangle',.055);tone(988,2.12,.12,'square',.032);return;
@@ -268,17 +284,28 @@
 
   function oleg(){
     if(!olegSprites.complete||!olegSprites.naturalWidth)return;
+    if(game.reaction==='gameover'&&game.gameOverCause==='toxic'&&toxicSurpriseSprites.complete&&toxicSurpriseSprites.naturalWidth){
+      const elapsed=performance.now()-game.gameOverStartedAt,openingDuration=7*TOXIC_REACTION_FRAME_MS;
+      const frame=elapsed<openingDuration?Math.min(6,Math.floor(elapsed/TOXIC_REACTION_FRAME_MS)):5+Math.floor((elapsed-openingDuration)/220)%2;
+      const size=300,y=552-size*TOXIC_REACTION_FOOT_Y/512;
+      horizontalFrame(toxicSurpriseSprites,7,frame,480-size/2,y,size,size,0,game.missLane>=2);return;
+    }
     if(game.reaction==='gameover'&&cryingSprites.complete&&cryingSprites.naturalWidth){
       const frame=Math.floor(performance.now()/170)%CRYING_CROPS.length,src=CRYING_CROPS[frame],height=210,width=height*(src[2]/src[3]);
       ctx.drawImage(cryingSprites,...src,480-width/2,552-height,width,height);return;
     }
-    if(game.reaction==='dance'&&danceFrames.every(image=>image.complete&&image.naturalWidth)){
-      const frame=Math.min(danceFrames.length-1,Math.floor(game.reactionClock/130)),image=danceFrames[frame],src=DANCE_CROPS[frame];
-      const height=270,width=height*(src[2]/src[3]);
-      ctx.drawImage(image,...src,480-width/2,552-height,width,height);return;
+    const danceSprite=danceSprites[game.danceIndex]||danceSprites[0];
+    if(game.reaction==='dance'&&danceSprite.complete&&danceSprite.naturalWidth){
+      const frame=Math.floor(game.reactionClock/DANCE_FRAME_MS)%7,size=270,y=552-size*DANCE_FOOT_Y/512;
+      horizontalFrame(danceSprite,7,frame,480-size/2,y,size,size);return;
     }
-    if((game.reaction==='miss'||game.reaction==='toxic')&&userLeftDropped.complete&&userLeftDropped.naturalWidth){
-      drawUserOleg(userLeftDropped,[28,245,344,440],game.missLane>=2,0);return;
+    if(game.reaction==='miss'&&droppedCrySprites.complete&&droppedCrySprites.naturalWidth){
+      const frame=Math.floor(game.reactionClock/DROPPED_CRY_FRAME_MS)%7,size=300,y=552-size*DROPPED_CRY_FOOT_Y/512;
+      horizontalFrame(droppedCrySprites,7,frame,480-size/2,y,size,size,0,game.missLane>=2);return;
+    }
+    if(game.reaction==='toxic'&&toxicSurpriseSprites.complete&&toxicSurpriseSprites.naturalWidth){
+      const frame=Math.min(6,Math.floor(game.reactionClock/TOXIC_REACTION_FRAME_MS)),size=300,y=552-size*TOXIC_REACTION_FOOT_Y/512;
+      horizontalFrame(toxicSurpriseSprites,7,frame,480-size/2,y,size,size,0,game.missLane>=2);return;
     }
     if(game.reaction!=='gameover'&&userLeftLow.complete&&userLeftLow.naturalWidth){
       const upper=game.lane===0||game.lane===2;
@@ -439,14 +466,15 @@
   function playPendingGameoverSound(){if(game.reaction==='gameover'&&game.gameOverSoundPending&&!game.gameOverSoundPlayed&&game.achievement===null&&!game.achievementQueue.length){game.gameOverSoundPending=false;game.gameOverSoundPlayed=true;beep('over')}}
   function advanceAchievement(dt){if(game.achievement===null){showNextAchievement();playPendingGameoverSound();return}game.achievementClock+=dt;if(game.achievementClock>=2600){game.achievement=null;game.achievementClock=0;showNextAchievement();playPendingGameoverSound()}}
   function markOneLife(){if(game.lives===1&&game.oneLifeSince===null)game.oneLifeSince=game.playTime}
-  function triggerGameover(){game.lives=0;game.running=false;game.reaction='gameover';game.reactionClock=0;game.catchAnim=null;game.hypeText='';game.hypeClock=0;game.message='РАЗОЧАРОВАНИЕ · СТАРТ — РЕВАНШ';game.gameOverSoundPending=true;if(game.caughtBoxes===0)unlockAchievement(5);playPendingGameoverSound()}
+  function queueRandomDance(){game.danceIndex=Math.floor(Math.random()*danceSprites.length);game.danceQueued=true}
+  function triggerGameover(cause='miss'){game.lives=0;game.running=false;game.reaction='gameover';game.reactionClock=0;game.catchAnim=null;game.hypeText='';game.hypeClock=0;game.gameOverCause=cause;game.gameOverStartedAt=performance.now();game.message='РАЗОЧАРОВАНИЕ · СТАРТ — РЕВАНШ';game.gameOverSoundPending=true;if(game.caughtBoxes===0)unlockAchievement(5);playPendingGameoverSound()}
   function catchItem(item){
     const [x,y]=pathPoint(item.lane,item.progress);
     const type=item.type||'startup';
     game.lastDelta=type==='unicorn'?1000:type==='toxic'?-2000:200;
     const flightElapsed=Math.max(0,item.age-item.releaseAt),rotation=itemAnimation(item,flightElapsed).rotation;
     game.score+=game.lastDelta;game.reaction=type==='startup'?'catch':type;game.reactionClock=0;game.catchAnim={...item,upper:item.lane===0||item.lane===2,x,y,t:0,flightElapsed,rotation};
-    if(type==='toxic'){game.catchStreak=0;game.agileStreak=0;game.pivotLanes=[];game.movedSinceCatch=false;game.lives=Math.max(0,game.lives-1);markOneLife();game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(olegLines.toxic);if(game.lives===0){triggerGameover();return}beep('toxic');return}
+    if(type==='toxic'){game.catchStreak=0;game.agileStreak=0;game.pivotLanes=[];game.movedSinceCatch=false;game.lives=Math.max(0,game.lives-1);markOneLife();game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(olegLines.toxic);if(game.lives===0){triggerGameover('toxic');return}beep('toxic');return}
     let achievementUnlocked=game.score>=10000&&unlockAchievement(10);
     if(type==='startup'){
       game.caughtBoxes++;game.catchStreak++;
@@ -454,9 +482,9 @@
       game.agileStreak=game.movedSinceCatch?game.agileStreak+1:0;game.movedSinceCatch=false;if(game.agileStreak>=10)achievementUnlocked=unlockAchievement(3)||achievementUnlocked;
       game.pivotLanes.push(item.lane);game.pivotLanes=game.pivotLanes.slice(-4);if(game.pivotLanes.length===4&&new Set(game.pivotLanes).size===4)achievementUnlocked=unlockAchievement(4)||achievementUnlocked;
     }
-    if(type==='unicorn'){game.movedSinceCatch=false;game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();burstChampion();if(!achievementUnlocked&&game.achievement===null)showHype(olegLines.unicorn);beep('unicorn');return}
+    if(type==='unicorn'){game.movedSinceCatch=false;game.message='ЕДИНОРОГ!';queueRandomDance();rainDollars();burstChampion();if(!achievementUnlocked&&game.achievement===null)showHype(olegLines.unicorn);beep('unicorn');return}
     game.message='ИГРА';
-    if(game.playTime>=game.nextDanceAt){game.danceQueued=true;game.nextDanceAt=game.playTime+25000+Math.random()*20000}
+    if(game.playTime>=game.nextDanceAt){queueRandomDance();game.nextDanceAt=game.playTime+25000+Math.random()*20000}
     if(!achievementUnlocked&&game.achievement===null&&game.playTime>=game.nextHypeAt){game.hypeText=olegLines.catch[Math.floor(Math.random()*olegLines.catch.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+5000+Math.random()*4000}
     celebrate();if(!achievementUnlocked)beep('catch');
   }
@@ -476,8 +504,9 @@
     if(game.lives===1&&game.oneLifeSince!==null&&game.playTime-game.oneLifeSince>=120000)unlockAchievement(8);
     game.throwTimers.forEach((timer,lane)=>game.throwTimers[lane]=timer+dt);
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;
-    if(game.reaction==='catch'&&game.reactionClock>900){game.reaction=game.danceQueued?'dance':'idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА'}
-    else if((game.reaction==='miss'&&game.reactionClock>1050)||(game.reaction==='unicorn'&&game.reactionClock>1250)||(game.reaction==='toxic'&&game.reactionClock>1100)||(game.reaction==='dance'&&game.reactionClock>1040)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message='ИГРА'}
+    if(game.reaction==='catch'&&game.reactionClock>900){game.reaction=game.danceQueued?'dance':'idle';game.reactionClock=0;game.catchAnim=null;if(game.danceQueued)beep('dance');game.danceQueued=false;game.message='ИГРА'}
+    else if(game.reaction==='unicorn'&&game.reactionClock>1250){game.reaction='dance';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА';beep('dance')}
+    else if((game.reaction==='miss'&&game.reactionClock>1050)||(game.reaction==='toxic'&&game.reactionClock>1100)||(game.reaction==='dance'&&game.reactionClock>DANCE_DURATION_MS)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message='ИГРА'}
     const progress=clamp(game.playTime/DIFFICULTY_RAMP_MS,0,1),ramp=progress*progress*(3-2*progress);
     const speed=FLIGHT_SPEED_START+ramp*(FLIGHT_SPEED_END-FLIGHT_SPEED_START);spawnClock+=dt;
     const spawnEvery=1050-ramp*670;
@@ -495,7 +524,8 @@
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
   function start(){if(!assetsReady)return;game=fresh();game.running=true;game.message='ИГРА';spawnClock=9999;overlay.classList.add('hidden');pauseButton.textContent='ПАУЗА';beep('start')}
-  function choose(lane){if(!game.running||game.paused)return;if(lane!==game.lane)game.movedSinceCatch=true;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
+  function interruptReaction(){if(!['miss','toxic','dance'].includes(game.reaction))return;game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА'}
+  function choose(lane){if(!game.running||game.paused)return;interruptReaction();if(lane!==game.lane)game.movedSinceCatch=true;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
   function pause(){if(!game.running)return;game.paused=!game.paused;game.message=game.paused?'ПАУЗА':'ИГРА';pauseButton.textContent=game.paused?'ПРОДОЛЖИТЬ':'ПАУЗА'}
 
   laneButtons.forEach(b=>b.addEventListener('pointerdown',()=>choose(+b.dataset.lane)));
