@@ -13,6 +13,10 @@ ASSETS = {
     "item-box-normal-6-frames-v3.png": (2048, 341, 6),
     "item-box-toxic-6-frames-v3.png": (2048, 341, 6),
     "item-unicorn-6-frames-v3.png": (2048, 341, 6),
+    "oleg-cringe-butt-dance-loop-7x512.png": (3584, 512, 7),
+    "oleg-cringe-chicken-shimmy-loop-7x512.png": (3584, 512, 7),
+    "oleg-dropped-box-cry-loop-7x512-v2.png": (3584, 512, 7),
+    "oleg-toxic-surprise-7x512-v4-style-match.png": (3584, 512, 7),
 }
 
 
@@ -26,6 +30,9 @@ def png_header(path: Path) -> tuple[int, int, int]:
 def main() -> None:
     game = (ROOT / "game.js").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/pr-preview.yml").read_text(encoding="utf-8")
+    background = ROOT / "assets" / "oleg-new-background-green.png"
+    assert png_header(background)[:2] == (1584, 993), "new background dimensions"
+    assert "assets/oleg-new-background-green.png" in game, "new background not connected"
 
     for name, (width, height, frame_count) in ASSETS.items():
         path = ROOT / "assets" / name
@@ -51,6 +58,26 @@ def main() -> None:
     assert "holdSpin: .0032" in game
     assert "(config.holdSpin-config.spin)*elapsed*elapsed/(2*duration)" in game
     assert "a.type==='toxic'?itemAnimation(a,a.flightElapsed+a.t).rotation" in game
+    assert "horizontalFrame(danceSprite,7,frame" in game
+    assert "Math.floor(Math.random()*danceSprites.length)" in game
+    assert "if(type==='unicorn'){game.movedSinceCatch=false;game.message='ЕДИНОРОГ!';queueRandomDance()" in game
+    assert "game.reaction==='unicorn'&&game.reactionClock>1250){game.reaction='dance'" in game
+    assert "const DANCE_FRAME_MS = 100" in game
+    assert "const DANCE_DURATION_MS = 1600" in game
+    assert "const DANCE_FOOT_Y = 499" in game
+    assert "beep('dance')" in game
+    assert "const DROPPED_CRY_FOOT_Y = 499" in game
+    assert "DROPPED_CRY_FRAME_MS)%7,size=300" in game
+    assert "horizontalFrame(droppedCrySprites,7,frame" in game
+    assert "game.missLane>=2" in game
+    assert "const TOXIC_REACTION_FOOT_Y = 499" in game
+    assert game.count("horizontalFrame(toxicSurpriseSprites,7,frame,480-size/2,y,size,size,0,game.missLane>=2)") == 2
+    assert "game.gameOverCause==='toxic'" in game
+    assert "5+Math.floor((elapsed-openingDuration)/220)%2" in game
+    assert "triggerGameover('toxic')" in game
+    assert "filter.frequency.exponentialRampToValueAtTime(120,t+.82)" in game
+    assert "['miss','toxic','dance'].includes(game.reaction)" in game
+    assert "interruptReaction();if(lane!==game.lane)" in game
     assert game.count("pathPoint(item.lane,item.progress)") == 2
     assert "const CATCH_START = .70" in game and "const CATCH_END = .84" in game
     assert "const FLIGHT_SPEED_START = .00036" in game
