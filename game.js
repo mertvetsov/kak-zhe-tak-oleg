@@ -574,13 +574,21 @@
 
   function start(){if(!assetsReady)return;game=fresh();game.running=true;game.message='ИГРА';spawnClock=9999;overlay.classList.add('hidden');pauseButton.textContent='ПАУЗА';beep('start')}
   function interruptReaction(){if(!['miss','toxic','underwear','dance'].includes(game.reaction))return;game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА'}
-  function choose(requestedLane){if(!game.running||game.paused)return;interruptReaction();const lane=game.underwearEffect.active?3-requestedLane:requestedLane;if(lane!==game.lane)game.movedSinceCatch=true;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
+  function choose(lane){if(!game.running||game.paused)return;interruptReaction();if(lane!==game.lane)game.movedSinceCatch=true;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
+  function chooseButton(requestedLane){choose(game.underwearEffect.active?3-requestedLane:requestedLane)}
+  function move(direction){
+    const actual=game.underwearEffect.active?({left:'right',right:'left',up:'down',down:'up'})[direction]:direction;
+    if(actual==='left')choose(game.lane<2?game.lane:game.lane-2);
+    else if(actual==='right')choose(game.lane<2?game.lane+2:game.lane);
+    else if(actual==='up')choose(game.lane<2?0:2);
+    else choose(game.lane<2?1:3);
+  }
   function pause(){if(!game.running)return;game.paused=!game.paused;game.message=game.paused?'ПАУЗА':'ИГРА';pauseButton.textContent=game.paused?'ПРОДОЛЖИТЬ':'ПАУЗА'}
 
-  laneButtons.forEach(b=>b.addEventListener('pointerdown',()=>choose(+b.dataset.lane)));
+  laneButtons.forEach(b=>b.addEventListener('pointerdown',()=>chooseButton(+b.dataset.lane)));
   startButton.addEventListener('click',start);
   pauseButton.addEventListener('click',pause);
   soundButton.addEventListener('click',()=>{sound=!sound;soundButton.textContent=`ЗВУК: ${sound?'ВКЛ':'ВЫКЛ'}`;soundButton.setAttribute('aria-pressed',String(sound));if(sound)beep('move')});
-  addEventListener('keydown',e=>{let lane;if(e.key==='ArrowLeft')lane=game.lane<2?game.lane:game.lane-2;if(e.key==='ArrowRight')lane=game.lane<2?game.lane+2:game.lane;if(e.key==='ArrowUp')lane=game.lane<2?0:2;if(e.key==='ArrowDown')lane=game.lane<2?1:3;if(e.key===' '){e.preventDefault();pause()}else if(lane!==undefined){e.preventDefault();choose(lane)}});
+  addEventListener('keydown',e=>{const direction=({ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'})[e.key];if(e.key===' '){e.preventDefault();pause()}else if(direction){e.preventDefault();move(direction)}});
   requestAnimationFrame(frame);
 })();

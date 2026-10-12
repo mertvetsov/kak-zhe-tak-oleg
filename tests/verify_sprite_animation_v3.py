@@ -89,14 +89,17 @@ def main() -> None:
     assert "triggerGameover(lostWhileBlind?'miss':'toxic')" in game
     assert "filter.frequency.exponentialRampToValueAtTime(120,t+.82)" in game
     assert "underwearEffect:{active:false,remainingMs:0,durationMs:UNDERWEAR_EFFECT_DURATION_MS}" in game
-    assert "const lane=game.underwearEffect.active?3-requestedLane:requestedLane" in game
+    assert "function chooseButton(requestedLane){choose(game.underwearEffect.active?3-requestedLane:requestedLane)}" in game
+    assert "left:'right',right:'left',up:'down',down:'up'" in game
+    assert "if(actual==='left')choose(game.lane<2?game.lane:game.lane-2)" in game
+    assert "else if(actual==='up')choose(game.lane<2?0:2)" in game
     assert "showHype(underwearLines.activate);beep('underwearOn')" in game
     assert "showHype(underwearLines.deactivate);beep('underwearOff')" in game
     assert "game.underwearEffect.remainingMs=Math.max(0,game.underwearEffect.remainingMs-dt)" in game
     assert "deactivateUnderwearEffect(false);game.lives=0" in game
     assert "if(item.type==='toxic'||item.type==='underwear')return" in game
     assert "['miss','toxic','underwear','dance'].includes(game.reaction)" in game
-    assert "interruptReaction();const lane=game.underwearEffect.active?3-requestedLane:requestedLane;if(lane!==game.lane)" in game
+    assert "function choose(lane){if(!game.running||game.paused)return;interruptReaction();if(lane!==game.lane)" in game
     assert game.count("pathPoint(item.lane,item.progress)") == 2
     assert "const CATCH_START = .70" in game and "const CATCH_END = .84" in game
     assert "const FLIGHT_SPEED_START = .00036" in game
