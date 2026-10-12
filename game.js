@@ -108,7 +108,7 @@
       baseSize: 341,
       normal: { mode: 'loop', frameMs: 105, spin: .0022 },
       unicorn: { mode: 'loop', frameMs: 115, spin: -.0020 },
-      toxic: { mode: 'once-hold', frameMs: 130, spin: .0017, holdSpin: .00045 },
+      toxic: { mode: 'once-hold', frameMs: 130, spin: .0017, holdSpin: .0032 },
     },
     trajectories: [
       [[160,145],[340,28],[430,70],[455,300]],
@@ -147,21 +147,11 @@
   const FLIGHT_SPEED_START = .00036;
   const FLIGHT_SPEED_END = .00060;
   const DIFFICULTY_RAMP_MS = 180000;
-  const ACHIEVEMENT_STORAGE_KEY = 'kak-zhe-tak-oleg-achievements-v1';
   let game = fresh();
   let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
 
-  function loadAchievements(){
-    try{
-      const saved=JSON.parse(localStorage.getItem(ACHIEVEMENT_STORAGE_KEY)||'[]');
-      return Array.from({length:ACHIEVEMENT_CROPS.length},(_,index)=>saved[index]===true);
-    }catch(error){return Array(ACHIEVEMENT_CROPS.length).fill(false)}
-  }
-  function saveAchievements(){
-    try{localStorage.setItem(ACHIEVEMENT_STORAGE_KEY,JSON.stringify(game.achievements))}catch(error){}
-  }
   function fresh(){
-    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], firstStartupSpawned:false, oneLifeSince:null, achievements:loadAchievements(), achievementQueue:[], achievement:null, achievementClock:0, gameOverSoundPending:false, gameOverSoundPlayed:false };
+    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], championBurst:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], firstStartupSpawned:false, oneLifeSince:null, achievements:Array(ACHIEVEMENT_CROPS.length).fill(false), achievementQueue:[], achievement:null, achievementClock:0, gameOverSoundPending:false, gameOverSoundPlayed:false };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -175,8 +165,9 @@
       audio ||= new (window.AudioContext||window.webkitAudioContext)();
       const tone=(frequency,offset,duration,type='square',volume=.04)=>{const o=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime+offset;o.type=type;o.frequency.value=frequency;g.gain.setValueAtTime(volume,t);g.gain.exponentialRampToValueAtTime(.001,t+duration);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+duration+.01)};
       if(kind==='unicorn'){
-        [523,659,784,1047,1319].forEach((frequency,i)=>tone(frequency,i*.075,.16,'triangle',.055));
-        tone(2093,.31,.22,'sine',.035);return;
+        [[523,0],[659,.11],[784,.22],[1047,.36],[1319,.5]].forEach(([frequency,offset])=>{tone(frequency,offset,.24,'triangle',.06);tone(frequency/2,offset,.18,'square',.018)});
+        [1047,1319,1568].forEach(frequency=>tone(frequency,.68,.58,'triangle',.045));
+        tone(2093,.72,.5,'sine',.035);return;
       }
       if(kind==='toxic'){
         [185,128,82].forEach((frequency,i)=>tone(frequency,i*.07,.2,'sawtooth',.045));
@@ -346,8 +337,8 @@
     const duration=config.frameMs*ANIMATION_CONFIG.items.frames;
     const rotation=config.mode==='once-hold'
       ? elapsed<duration
-        ? config.spin*(elapsed-elapsed*elapsed/(2*duration))
-        : config.spin*duration/2+config.holdSpin*(elapsed-duration)
+        ? config.spin*elapsed+(config.holdSpin-config.spin)*elapsed*elapsed/(2*duration)
+        : (config.spin+config.holdSpin)*duration/2+config.holdSpin*(elapsed-duration)
       : config.spin*elapsed;
     return {frame,rotation};
   }
@@ -366,7 +357,8 @@
     const p=clamp(a.t/360,0,1), q=1-Math.pow(1-p,3);
     const target=[480+(a.lane<2?-54:54),a.upper?255:340];
     const x=a.x+(target[0]-a.x)*q, y=a.y+(target[1]-a.y)*q-28*Math.sin(p*Math.PI);
-    drawItem(x,y,a,1,a.flightElapsed+a.t,(1-p)*a.rotation);
+    const rotation=a.type==='toxic'?itemAnimation(a,a.flightElapsed+a.t).rotation:(1-p)*a.rotation;
+    drawItem(x,y,a,1,a.flightElapsed+a.t,rotation);
   }
 
   function drawPoop(p){
@@ -380,6 +372,7 @@
     game.fragments=game.fragments.filter(f=>f.y<570&&f.life-- >0);
     game.sparks.forEach(s=>{s.x+=s.vx*dt;s.y+=s.vy*dt;s.vy+=.00035*dt;s.life-=dt;ctx.save();ctx.translate(s.x,s.y);ctx.rotate(Math.sin(s.life*.015)*.18);ctx.fillStyle=ink();ctx.font='900 27px monospace';ctx.textAlign='center';ctx.fillText('$',0,0);ctx.restore()});game.sparks=game.sparks.filter(s=>s.life>0);
     game.dollarRain.forEach(d=>{d.y+=d.vy*dt;d.x+=Math.sin(d.y*.025+d.phase)*d.drift*dt;d.life-=dt;if(d.y>-20){ctx.save();ctx.translate(d.x,d.y);ctx.rotate(Math.sin(d.y*.018+d.phase)*.28);ctx.fillStyle=ink();ctx.font=`900 ${d.size}px monospace`;ctx.textAlign='center';ctx.fillText('$',0,0);ctx.restore()}});game.dollarRain=game.dollarRain.filter(d=>d.life>0&&d.y<H+50);
+    game.championBurst.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=.00012*dt;p.rot+=p.vr*dt;p.life-=dt;const fade=clamp(p.life/350,0,1);ctx.save();ctx.globalAlpha=fade;ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle=ink();ctx.strokeStyle=lcd();ctx.lineWidth=2;if(p.kind==='dollar'){ctx.font=`900 ${p.size*2}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.strokeText('$',0,0);ctx.fillText('$',0,0)}else{ctx.beginPath();for(let point=0;point<10;point++){const radius=point%2?p.size*.42:p.size,angle=-Math.PI/2+point*Math.PI/5,x=Math.cos(angle)*radius,y=Math.sin(angle)*radius;point?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();ctx.stroke();ctx.fill()}ctx.restore()});game.championBurst=game.championBurst.filter(p=>p.life>0);
     game.poopBurst.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=.0005*dt;p.rot+=p.vr*dt;p.life-=dt;drawPoop(p)});game.poopBurst=game.poopBurst.filter(p=>p.life>0&&p.y<H+40);
   }
 
@@ -436,12 +429,13 @@
   }
   function celebrate(count=9){for(let i=0;i<count;i++)game.sparks.push({x:480+(Math.random()-.5)*100,y:320+(Math.random()-.5)*80,vx:(Math.random()-.5)*.08,vy:-Math.random()*.14-.03,life:650+Math.random()*350})}
   function rainDollars(){for(let i=0;i<42;i++)game.dollarRain.push({x:70+Math.random()*(W-140),y:-30-Math.random()*520,vy:.12+Math.random()*.12,drift:(Math.random()-.5)*.035,phase:Math.random()*Math.PI*2,size:22+Math.random()*20,life:3200+Math.random()*900})}
+  function burstChampion(){for(let i=0;i<64;i++){const angle=Math.PI*2*i/64+(Math.random()-.5)*.16,speed=.13+Math.random()*.19;game.championBurst.push({kind:i%3?'star':'dollar',x:480+Math.cos(angle)*38,y:345+Math.sin(angle)*46,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-.025,rot:Math.random()*Math.PI*2,vr:(Math.random()-.5)*.018,size:5+Math.random()*7,life:850+Math.random()*650})}}
   function burstPoop(){for(let i=0;i<18;i++){const angle=-Math.PI*.92+Math.random()*Math.PI*.84,speed=.13+Math.random()*.18;game.poopBurst.push({x:480+(Math.random()-.5)*45,y:365+(Math.random()-.5)*55,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-.05,rot:Math.random()*Math.PI*2,vr:(Math.random()-.5)*.012,size:7+Math.random()*6,life:850+Math.random()*550})}}
   function showHype(lines){game.hypeText=lines[Math.floor(Math.random()*lines.length)];game.hypeClock=0}
   function rollItemType(){const roll=Math.random();return roll<ITEM_CHANCES.unicorn?'unicorn':roll<ITEM_CHANCES.unicorn+ITEM_CHANCES.toxic?'toxic':'startup'}
   function formatTime(ms){const seconds=Math.floor(ms/1000),minutes=Math.floor(seconds/60);return `${String(minutes).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`}
   function showNextAchievement(){if(game.achievement!==null||!game.achievementQueue.length)return;game.achievement=game.achievementQueue.shift();game.achievementClock=0;game.hypeText='';game.hypeClock=0;beep('achievement')}
-  function unlockAchievement(index){if(game.achievements[index])return false;game.achievements[index]=true;saveAchievements();game.achievementQueue.push(index);game.hypeText='';game.hypeClock=0;showNextAchievement();return true}
+  function unlockAchievement(index){if(game.achievements[index])return false;game.achievements[index]=true;game.achievementQueue.push(index);game.hypeText='';game.hypeClock=0;showNextAchievement();return true}
   function playPendingGameoverSound(){if(game.reaction==='gameover'&&game.gameOverSoundPending&&!game.gameOverSoundPlayed&&game.achievement===null&&!game.achievementQueue.length){game.gameOverSoundPending=false;game.gameOverSoundPlayed=true;beep('over')}}
   function advanceAchievement(dt){if(game.achievement===null){showNextAchievement();playPendingGameoverSound();return}game.achievementClock+=dt;if(game.achievementClock>=2600){game.achievement=null;game.achievementClock=0;showNextAchievement();playPendingGameoverSound()}}
   function markOneLife(){if(game.lives===1&&game.oneLifeSince===null)game.oneLifeSince=game.playTime}
@@ -460,7 +454,7 @@
       game.agileStreak=game.movedSinceCatch?game.agileStreak+1:0;game.movedSinceCatch=false;if(game.agileStreak>=10)achievementUnlocked=unlockAchievement(3)||achievementUnlocked;
       game.pivotLanes.push(item.lane);game.pivotLanes=game.pivotLanes.slice(-4);if(game.pivotLanes.length===4&&new Set(game.pivotLanes).size===4)achievementUnlocked=unlockAchievement(4)||achievementUnlocked;
     }
-    if(type==='unicorn'){game.movedSinceCatch=false;game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();celebrate(18);if(!achievementUnlocked&&game.achievement===null)showHype(olegLines.unicorn);if(!achievementUnlocked)beep('unicorn');return}
+    if(type==='unicorn'){game.movedSinceCatch=false;game.message='ЕДИНОРОГ!';game.danceQueued=false;rainDollars();burstChampion();if(!achievementUnlocked&&game.achievement===null)showHype(olegLines.unicorn);beep('unicorn');return}
     game.message='ИГРА';
     if(game.playTime>=game.nextDanceAt){game.danceQueued=true;game.nextDanceAt=game.playTime+25000+Math.random()*20000}
     if(!achievementUnlocked&&game.achievement===null&&game.playTime>=game.nextHypeAt){game.hypeText=olegLines.catch[Math.floor(Math.random()*olegLines.catch.length)];game.hypeClock=0;game.nextHypeAt=game.playTime+5000+Math.random()*4000}

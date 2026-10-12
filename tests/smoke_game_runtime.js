@@ -53,7 +53,9 @@ global.document = {
   },
   querySelectorAll: () => laneButtons,
 };
-global.localStorage = { getItem: () => null, setItem: noop };
+global.localStorage = new Proxy({}, {
+  get() { throw new Error('game should not access localStorage'); },
+});
 global.getComputedStyle = () => ({ getPropertyValue: () => '#26301d' });
 global.fetch = async () => ({ ok: true, json: async () => ({ catch: ['ok'], unicorn: ['ok'], toxic: ['ok'] }) });
 global.addEventListener = noop;
