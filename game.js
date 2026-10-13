@@ -2,6 +2,8 @@
 (() => {
   const canvas = document.querySelector('#game');
   const ctx = canvas.getContext('2d');
+  const achievementCanvas = document.querySelector('#achievement-card');
+  const achievementCtx = achievementCanvas.getContext('2d');
   const overlay = document.querySelector('#overlay');
   const overlayTitle = overlay.querySelector('strong');
   const overlayStatus = overlay.querySelector('span');
@@ -162,8 +164,8 @@
   ];
   const ITEM_CHANCES = { unicorn:.04, toxic:.10 };
   const UNDERWEAR_INVESTOR_INDEX = 3;
-  const UNDERWEAR_INVESTOR_CHANCE = .18;
-  const UNDERWEAR_EFFECT_DURATION_MS = 15000;
+  const UNDERWEAR_INVESTOR_CHANCE = .07;
+  const UNDERWEAR_EFFECT_DURATION_MS = 10000;
   const UNDERWEAR_OLEG_SCALE = .27;
   const UNDERWEAR_OLEG_FOOT_Y = 1480;
   const labels = ['AI','SaaS','WEB3','B2B','APP','$'];
@@ -171,8 +173,10 @@
   const CATCH_END = .84;
   const TOXIC_REJECT_END = .77;
   const FLIGHT_SPEED_START = .00036;
-  const FLIGHT_SPEED_END = .00060;
-  const DIFFICULTY_RAMP_MS = 180000;
+  const FLIGHT_SPEED_END = .00068;
+  const SPAWN_INTERVAL_START_MS = 1050;
+  const SPAWN_INTERVAL_END_MS = 480;
+  const DIFFICULTY_RAMP_MS = 150000;
   const DANCE_FRAME_MS = 100;
   const DANCE_DURATION_MS = 1600;
   const DANCE_FOOT_Y = 499;
@@ -181,7 +185,7 @@
   const TOXIC_REACTION_FRAME_MS = 140;
   const TOXIC_REACTION_FOOT_Y = 499;
   let game = fresh();
-  let sound = true, audio, last = performance.now(), spawnClock = 0, id = 0;
+  let sound = true, audio, audioResumePromise = null, last = performance.now(), spawnClock = 0, id = 0;
 
   function fresh(){
     return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], championBurst:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, danceIndex:0, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], firstStartupSpawned:false, oneLifeSince:null, underwearEffect:{active:false,remainingMs:0,durationMs:UNDERWEAR_EFFECT_DURATION_MS}, achievements:Array(ACHIEVEMENT_CROPS.length).fill(false), achievementQueue:[], achievement:null, achievementClock:0, gameOverCause:null, gameOverStartedAt:0, gameOverSoundPending:false, gameOverSoundPlayed:false };
@@ -192,11 +196,21 @@
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   const ease = t => 1 - Math.pow(1-t,3);
 
-  function beep(kind){
-    if(!sound) return;
+  function withAudio(play){
+    if(!sound)return;
     try{
       audio ||= new (window.AudioContext||window.webkitAudioContext)();
-      if(audio.state==='suspended'){audio.resume().then(()=>beep(kind)).catch(()=>{});return}
+      if(audio.state==='running'){play(audio);return}
+      if(audio.state==='suspended'){
+        audioResumePromise ||= audio.resume().then(()=>audio).finally(()=>audioResumePromise=null);
+        audioResumePromise.then(context=>{if(sound&&context.state==='running')play(context)}).catch(()=>{});
+      }
+    }catch(e){}
+  }
+
+  function beep(kind){
+    withAudio(audio=>{
+      try{
       const tone=(frequency,offset,duration,type='square',volume=.04)=>{const o=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime+offset;o.type=type;o.frequency.value=frequency;g.gain.setValueAtTime(volume,t);g.gain.exponentialRampToValueAtTime(.001,t+duration);o.connect(g).connect(audio.destination);o.start(t);o.stop(t+duration+.01)};
       if(kind==='unicorn'){
         [[523,0],[659,.11],[784,.22],[1047,.36],[1319,.5]].forEach(([frequency,offset])=>{tone(frequency,offset,.24,'triangle',.06);tone(frequency/2,offset,.18,'square',.018)});
@@ -235,7 +249,8 @@
       }
       const notes = kind==='catch'?[520,760,1040]:kind==='miss'?[210,145,95]:kind==='start'?[330,440,660]:[250];
       notes.forEach((frequency,i)=>tone(frequency,i*.065,.06));
-    }catch(e){}
+      }catch(e){}
+    });
   }
 
   function line(x1,y1,x2,y2,w=5){ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
@@ -464,11 +479,7 @@
       ctx.textAlign='center';
       if(['catch','unicorn','toxic','underwear'].includes(game.reaction)&&game.reactionClock<650){ctx.font='900 34px monospace';const sign=game.lastDelta>=0?'+':'−';ctx.fillText(`${sign}$${Math.abs(game.lastDelta)}`,480,210-game.reactionClock*.05)}
     }
-    if(game.achievement!==null){
-      const [sheet,...src]=ACHIEVEMENT_CROPS[game.achievement],image=sheet===0?achievementSprites:newAchievementSprites,enter=clamp(game.achievementClock/240,0,1),fade=game.achievementClock<2200?1:(2600-game.achievementClock)/400,width=560,height=width*(src[3]/src[2]),y=190+(1-ease(enter))*100;
-      if(image.complete&&image.naturalWidth){ctx.save();ctx.globalAlpha=clamp(fade,0,1);ctx.drawImage(image,...src,480-width/2,y-height/2,width,height);ctx.restore()}
-    }
-    else if(!gameover&&game.hypeText&&game.hypeClock<1800){
+    if(game.achievement===null&&!gameover&&game.hypeText&&game.hypeClock<1800){
       const fade=game.hypeClock<1400?1:(1800-game.hypeClock)/400;
       let size=44;ctx.font=`900 ${size}px "Arial Narrow",Arial,sans-serif`;while(ctx.measureText(game.hypeText).width>650&&size>24){size--;ctx.font=`900 ${size}px "Arial Narrow",Arial,sans-serif`}
       const y=245-Math.min(105,game.hypeClock*.07);
@@ -485,12 +496,17 @@
 
   function draw(dt=16){
     ctx.clearRect(0,0,W,H);
+    achievementCtx.clearRect(0,0,achievementCanvas.width,achievementCanvas.height);
     background();
     animatedInvestors(0);
     drawMirroredLayer(balconyFrontUp);
     animatedInvestors(1);
     drawMirroredLayer(balconyFrontDown);
     game.items.forEach(startup);caughtBox();gameoverDollarDrift();oleg();effects(dt);hud();
+    if(game.achievement!==null){
+      const [sheet,...src]=ACHIEVEMENT_CROPS[game.achievement],image=sheet===0?achievementSprites:newAchievementSprites,enter=clamp(game.achievementClock/240,0,1),fade=game.achievementClock<2200?1:(2600-game.achievementClock)/400,width=806,height=width*(src[3]/src[2]),x=(achievementCanvas.width-width)/2,y=10+(1-ease(enter))*70;
+      if(image.complete&&image.naturalWidth){achievementCtx.save();achievementCtx.globalAlpha=clamp(fade,0,1);achievementCtx.drawImage(image,...src,x,y,width,height);achievementCtx.restore()}
+    }
     if(game.paused){ctx.fillStyle='rgba(155,170,120,.78)';ctx.fillRect(260,235,440,115);ctx.fillStyle=ink();ctx.textAlign='center';ctx.font='900 46px monospace';ctx.fillText('ПАУЗА',480,305)}
     gameStatus.textContent=`Счёт $${game.score}, жизни ${game.lives}, ${game.message}`;
   }
@@ -558,7 +574,7 @@
     else if((game.reaction==='miss'&&game.reactionClock>1050)||(game.reaction==='toxic'&&game.reactionClock>1100)||(game.reaction==='underwear'&&game.reactionClock>900)||(game.reaction==='dance'&&game.reactionClock>DANCE_DURATION_MS)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message='ИГРА'}
     const progress=clamp(game.playTime/DIFFICULTY_RAMP_MS,0,1),ramp=progress*progress*(3-2*progress);
     const speed=FLIGHT_SPEED_START+ramp*(FLIGHT_SPEED_END-FLIGHT_SPEED_START);spawnClock+=dt;
-    const spawnEvery=1050-ramp*670;
+    const spawnEvery=SPAWN_INTERVAL_START_MS-ramp*(SPAWN_INTERVAL_START_MS-SPAWN_INTERVAL_END_MS);
     const cap=game.playTime>120000?4:game.playTime>45000?3:2;
     if(spawnClock>spawnEvery&&game.reaction==='idle'&&game.items.length<cap){
       spawnClock=0;

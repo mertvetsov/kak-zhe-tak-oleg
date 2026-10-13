@@ -34,6 +34,7 @@ const context = new Proxy({
   set(target, property, value) { target[property] = value; return true; },
 });
 const canvas = { width: 960, height: 600, getContext: () => context };
+const achievementCanvas = { width: 820, height: 330, getContext: () => context };
 
 global.Image = class Image {
   constructor() { this.complete = true; this.naturalWidth = 2048; this.naturalHeight = 640; }
@@ -49,7 +50,7 @@ global.Image = class Image {
 global.document = {
   documentElement: {},
   querySelector(selector) {
-    return ({ '#game': canvas, '#overlay': overlay, '#start': start, '#pause': pause, '#sound': sound, '#game-status': gameStatus })[selector];
+    return ({ '#game': canvas, '#achievement-card': achievementCanvas, '#overlay': overlay, '#start': start, '#pause': pause, '#sound': sound, '#game-status': gameStatus })[selector];
   },
   querySelectorAll: () => laneButtons,
 };
@@ -61,10 +62,11 @@ global.fetch = async url => ({ ok: true, json: async () => String(url).includes(
 global.addEventListener = noop;
 global.window = global;
 let audioResumeCalls = 0;
+let oscillatorStarts = 0;
 global.AudioContext = class AudioContext {
   constructor() { this.state = 'suspended'; this.currentTime = 0; this.destination = {}; this.sampleRate = 44100; }
   resume() { audioResumeCalls += 1; this.state = 'running'; return Promise.resolve(); }
-  createOscillator() { return { frequency: {}, connect() { return this; }, start: noop, stop: noop }; }
+  createOscillator() { return { frequency: {}, connect() { return this; }, start() { oscillatorStarts += 1; }, stop: noop }; }
   createGain() { return { gain: { setValueAtTime: noop, exponentialRampToValueAtTime: noop }, connect() { return this; } }; }
 };
 
@@ -79,6 +81,7 @@ require(path.join(__dirname, '..', 'game.js'));
   handlers.get('start:click')();
   await new Promise(resolve => setImmediate(resolve));
   if (audioResumeCalls !== 1) throw new Error('audio context was not resumed on start');
+  if (oscillatorStarts === 0) throw new Error('start sound was not scheduled after audio resume');
 
   const startedAt = performance.now();
   for (let index = 1; index <= 600; index += 1) {

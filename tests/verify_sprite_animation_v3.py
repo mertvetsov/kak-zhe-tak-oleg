@@ -62,6 +62,8 @@ def main() -> None:
     assert game.count("mirror: false") == 2 and game.count("mirror: true") == 2
     assert "Math.random()<UNDERWEAR_INVESTOR_CHANCE?UNDERWEAR_INVESTOR_INDEX" in game
     assert "actor===UNDERWEAR_INVESTOR_INDEX?'underwear':rollItemType()" in game
+    assert "const UNDERWEAR_INVESTOR_CHANCE = .07" in game
+    assert "const UNDERWEAR_EFFECT_DURATION_MS = 10000" in game
     assert "Math.round(index*image.naturalWidth/frameCount)" in game
     assert "Math.round((index+1)*image.naturalWidth/frameCount)" in game
     assert "scale: .8" in game and "scale: .65" in game
@@ -103,7 +105,10 @@ def main() -> None:
     assert game.count("pathPoint(item.lane,item.progress)") == 2
     assert "const CATCH_START = .70" in game and "const CATCH_END = .84" in game
     assert "const FLIGHT_SPEED_START = .00036" in game
-    assert "const FLIGHT_SPEED_END = .00060" in game
+    assert "const FLIGHT_SPEED_END = .00068" in game
+    assert "const SPAWN_INTERVAL_START_MS = 1050" in game
+    assert "const SPAWN_INTERVAL_END_MS = 480" in game
+    assert "audioResumePromise ||= audio.resume()" in game
     assert "game.playTime/DIFFICULTY_RAMP_MS" in game
     assert "FLIGHT_SPEED_START+ramp*(FLIGHT_SPEED_END-FLIGHT_SPEED_START)" in game
     assert "cp -R assets resources .publish/" in workflow
