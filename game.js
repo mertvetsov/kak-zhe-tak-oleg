@@ -31,6 +31,7 @@
   const toxicItemSprites = new Image();
   const unicornItemSprites = new Image();
   const underwearItemSprites = new Image();
+  const heartItemSprites = new Image();
   const cryingSprites = new Image();
   const achievementSprites = new Image();
   const newAchievementSprites = new Image();
@@ -47,6 +48,7 @@
       toxic: 'assets/item-box-toxic-6-frames-v3.png',
       unicorn: 'assets/item-unicorn-6-frames-v3.png',
       underwear: 'assets/item-dirty-briefs-6x512.png',
+      heart: 'assets/item-heart-6-frames.png',
     },
   };
   backgroundArt.src = 'assets/oleg-new-background-green.png';
@@ -72,13 +74,14 @@
   toxicItemSprites.src = SPRITE_ASSETS.items.toxic;
   unicornItemSprites.src = SPRITE_ASSETS.items.unicorn;
   underwearItemSprites.src = SPRITE_ASSETS.items.underwear;
+  heartItemSprites.src = SPRITE_ASSETS.items.heart;
   cryingSprites.src = 'assets/oleg-crying-v1.png';
   achievementSprites.src = 'assets/startup-achievements-v2.png';
   newAchievementSprites.src = 'assets/startup-achievements-07-11-v1.png';
   danceSprites[0].src = 'assets/oleg-cringe-butt-dance-loop-7x512.png';
   danceSprites[1].src = 'assets/oleg-cringe-chicken-shimmy-loop-7x512.png';
 
-  const allAssets = [backgroundArt,olegSprites,emotionSprites,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,...underwearOlegSprites,droppedCrySprites,toxicSurpriseSprites,...investorSprites,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,underwearItemSprites,cryingSprites,achievementSprites,newAchievementSprites,...danceSprites];
+  const allAssets = [backgroundArt,olegSprites,emotionSprites,boxFlightSprites,userLeftLow,userLeftLowBox,userLeftUp,userLeftUpBox,...underwearOlegSprites,droppedCrySprites,toxicSurpriseSprites,...investorSprites,balconyBack,balconyFrontUp,balconyFrontDown,toxicItemSprites,unicornItemSprites,underwearItemSprites,heartItemSprites,cryingSprites,achievementSprites,newAchievementSprites,...danceSprites];
   const resourceCount=allAssets.length+2;
   let assetsReady=false,loadedAssets=0,olegLines=null,underwearLines=null;
   const updateLoadStatus=()=>{loadedAssets++;overlayStatus.textContent=`${loadedAssets} / ${resourceCount}`};
@@ -90,9 +93,9 @@
   });
   const loadOlegLines=async()=>{
     try{
-      const response=await fetch('resources/oleg-exclamations.json?v=1');
+      const response=await fetch('resources/oleg-exclamations.json?v=2');
       if(!response.ok)throw new Error(`HTTP ${response.status}`);
-      const data=await response.json(),groups=['catch','unicorn','toxic'];
+      const data=await response.json(),groups=['catch','unicorn','toxic','heart'];
       if(!groups.every(group=>Array.isArray(data[group])&&data[group].length&&data[group].every(line=>typeof line==='string'&&line.trim())))throw new Error('Invalid exclamations file');
       olegLines=data;return true;
     }catch(error){console.error('Не удалось загрузить реплики Олега',error);return false}
@@ -136,6 +139,7 @@
       unicorn: { mode: 'loop', frameMs: 115, spin: -.0020 },
       toxic: { mode: 'once-hold', frameMs: 130, spin: .0017, holdSpin: .0032 },
       underwear: { mode: 'loop', frameMs: 95, spin: .0026 },
+      heart: { mode: 'open-loop', frameMs: 110, spin: .0022 },
     },
     trajectories: [
       [[160,145],[340,28],[430,70],[455,300]],
@@ -162,7 +166,7 @@
     [1,55,80,806,244],[1,914,80,806,244],[1,55,350,806,244],
     [1,914,350,806,244],[1,55,620,806,244]
   ];
-  const ITEM_CHANCES = { unicorn:.04, toxic:.10 };
+  const ITEM_CHANCES = { heartStart:.10, heartEnd:.03, unicorn:.04, toxic:.10 };
   const UNDERWEAR_INVESTOR_INDEX = 3;
   const UNDERWEAR_INVESTOR_CHANCE = .07;
   const UNDERWEAR_EFFECT_DURATION_MS = 10000;
@@ -188,7 +192,7 @@
   let sound = true, audio, audioResumePromise = null, last = performance.now(), spawnClock = 0, id = 0;
 
   function fresh(){
-    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], championBurst:[], poopBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, danceIndex:0, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], firstStartupSpawned:false, oneLifeSince:null, underwearEffect:{active:false,remainingMs:0,durationMs:UNDERWEAR_EFFECT_DURATION_MS}, achievements:Array(ACHIEVEMENT_CROPS.length).fill(false), achievementQueue:[], achievement:null, achievementClock:0, gameOverCause:null, gameOverStartedAt:0, gameOverSoundPending:false, gameOverSoundPlayed:false };
+    return { running:false, paused:false, score:0, lives:3, lane:1, missLane:1, items:[], reaction:'idle', reactionClock:0, message:'НАЖМИ СТАРТ', fragments:[], sparks:[], dollarRain:[], championBurst:[], poopBurst:[], wordBurst:[], catchAnim:null, lastDelta:0, danceQueued:false, danceIndex:0, nextDanceAt:18000+Math.random()*14000, throwTimers:[9999,9999,9999,9999], throwActors:[-1,-1,-1,-1], playTime:0, nextHypeAt:5000+Math.random()*5000, hypeText:'', hypeClock:0, caughtBoxes:0, catchStreak:0, missedBoxes:0, movedSinceCatch:false, agileStreak:0, pivotLanes:[], firstStartupSpawned:false, oneLifeSince:null, underwearEffect:{active:false,remainingMs:0,durationMs:UNDERWEAR_EFFECT_DURATION_MS}, achievements:Array(ACHIEVEMENT_CROPS.length).fill(false), achievementQueue:[], achievement:null, achievementClock:0, gameOverCause:null, gameOverStartedAt:0, gameOverSoundPending:false, gameOverSoundPlayed:false };
   }
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const ink = () => css('--lcd-dark');
@@ -232,6 +236,11 @@
       if(kind==='achievement'){
         [523,659,784,1047].forEach((frequency,i)=>tone(frequency,i*.08,.22,'square',.045));
         [1319,1568].forEach((frequency,i)=>tone(frequency,.34+i*.08,.28,'triangle',.055));return;
+      }
+      if(kind==='heart'){
+        [[523,0],[659,.075],[784,.15],[1047,.24],[1319,.34],[1568,.44],[2093,.56]].forEach(([frequency,offset],i)=>{tone(frequency,offset,.25,i%2?'triangle':'square',.052);tone(frequency/2,offset,.22,'sine',.025)});
+        [[523,659,784],[659,831,988],[784,988,1175]].forEach((chord,i)=>chord.forEach(frequency=>tone(frequency,.68+i*.14,.32,'triangle',.04)));
+        [1047,1319,1568,2093].forEach(frequency=>tone(frequency,1.08,.62,'sine',.035));return;
       }
       if(kind==='dance'){
         [[392,0],[523,.12],[659,.24],[523,.36],[784,.5],[659,.64],[1047,.8],[784,.96]].forEach(([frequency,offset])=>{tone(frequency,offset,.18,'square',.035);tone(frequency/2,offset,.2,'triangle',.026)});
@@ -358,7 +367,7 @@
     }
     if(game.reaction!=='gameover'&&userLeftLow.complete&&userLeftLow.naturalWidth){
       const upper=game.lane===0||game.lane===2;
-      const caught=(game.reaction==='catch'||game.reaction==='unicorn')&&game.catchAnim?.t>300;
+      const caught=['catch','unicorn','heart'].includes(game.reaction)&&game.catchAnim?.t>300;
       if(game.underwearEffect.active){
         const sprite=underwearOlegSprites[upper?(caught?3:2):(caught?1:0)],bounce=caught?Math.sin(game.reactionClock*.025)*6:0;
         drawUnderwearOleg(sprite,game.lane>=2,bounce);return;
@@ -419,7 +428,7 @@
   }
 
   function itemAnimation(item,elapsed){
-    const type=item.type==='startup'?'normal':item.type||'normal',config=ANIMATION_CONFIG.items[type],rawFrame=Math.floor(elapsed/config.frameMs),frame=config.mode==='loop'?rawFrame%ANIMATION_CONFIG.items.frames:Math.min(ANIMATION_CONFIG.items.frames-1,rawFrame);
+    const type=item.type==='startup'?'normal':item.type||'normal',config=ANIMATION_CONFIG.items[type],rawFrame=Math.floor(elapsed/config.frameMs),frame=config.mode==='loop'?rawFrame%ANIMATION_CONFIG.items.frames:config.mode==='open-loop'?(rawFrame<4?rawFrame:4+(rawFrame-4)%2):Math.min(ANIMATION_CONFIG.items.frames-1,rawFrame);
     const duration=config.frameMs*ANIMATION_CONFIG.items.frames;
     const rotation=config.mode==='once-hold'
       ? elapsed<duration
@@ -429,7 +438,7 @@
     return {frame,rotation};
   }
   function drawItem(x,y,item,scale=1,elapsed=0,rotationOverride=null){
-    const type=item.type==='startup'?'normal':item.type||'normal',image=type==='unicorn'?unicornItemSprites:type==='toxic'?toxicItemSprites:type==='underwear'?underwearItemSprites:boxFlightSprites;
+    const type=item.type==='startup'?'normal':item.type||'normal',image=type==='unicorn'?unicornItemSprites:type==='toxic'?toxicItemSprites:type==='underwear'?underwearItemSprites:type==='heart'?heartItemSprites:boxFlightSprites;
     const animation=itemAnimation(item,elapsed),size=ANIMATION_CONFIG.items.baseSize*ANIMATION_CONFIG.items.scale*scale;
     horizontalFrame(image,ANIMATION_CONFIG.items.frames,animation.frame,x-size/2,y-size/2,size,size,rotationOverride??animation.rotation);
   }
@@ -460,6 +469,7 @@
     game.dollarRain.forEach(d=>{d.y+=d.vy*dt;d.x+=Math.sin(d.y*.025+d.phase)*d.drift*dt;d.life-=dt;if(d.y>-20){ctx.save();ctx.translate(d.x,d.y);ctx.rotate(Math.sin(d.y*.018+d.phase)*.28);ctx.fillStyle=ink();ctx.font=`900 ${d.size}px monospace`;ctx.textAlign='center';ctx.fillText('$',0,0);ctx.restore()}});game.dollarRain=game.dollarRain.filter(d=>d.life>0&&d.y<H+50);
     game.championBurst.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=.00012*dt;p.rot+=p.vr*dt;p.life-=dt;const fade=clamp(p.life/350,0,1);ctx.save();ctx.globalAlpha=fade;ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle=ink();ctx.strokeStyle=lcd();ctx.lineWidth=2;if(p.kind==='dollar'){ctx.font=`900 ${p.size*2}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.strokeText('$',0,0);ctx.fillText('$',0,0)}else{ctx.beginPath();for(let point=0;point<10;point++){const radius=point%2?p.size*.42:p.size,angle=-Math.PI/2+point*Math.PI/5,x=Math.cos(angle)*radius,y=Math.sin(angle)*radius;point?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();ctx.stroke();ctx.fill()}ctx.restore()});game.championBurst=game.championBurst.filter(p=>p.life>0);
     game.poopBurst.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=.0005*dt;p.rot+=p.vr*dt;p.life-=dt;drawPoop(p)});game.poopBurst=game.poopBurst.filter(p=>p.life>0&&p.y<H+40);
+    game.wordBurst.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=.00012*dt;p.life-=dt;ctx.save();ctx.globalAlpha=clamp(p.life/300,0,1);ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle='#f4f2e7';ctx.strokeStyle=ink();ctx.lineWidth=4;ctx.lineJoin='round';ctx.font=`900 ${p.size}px "Arial Narrow",Arial,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.strokeText(p.text,0,0);ctx.fillText(p.text,0,0);ctx.restore()});game.wordBurst=game.wordBurst.filter(p=>p.life>0);
   }
 
   function gameoverDollarDrift(){
@@ -474,7 +484,7 @@
   function hud(){
     const gameover=game.reaction==='gameover';
     if(!gameover){
-      ctx.fillStyle=ink();ctx.textAlign='right';ctx.font='900 54px monospace';const scoreText=game.score<0?'-$'+String(Math.abs(game.score)).padStart(3,'0'):'$'+String(game.score).padStart(3,'0');ctx.fillText(scoreText,805,78);
+      const hudColor='#34442d';ctx.fillStyle=hudColor;ctx.strokeStyle=hudColor;ctx.textAlign='right';ctx.font='900 54px monospace';const scoreText=game.score<0?'-$'+String(Math.abs(game.score)).padStart(3,'0'):'$'+String(game.score).padStart(3,'0');ctx.fillText(scoreText,805,106);
       for(let i=0;i<3;i++){const x=235+i*40;ctx.beginPath();ctx.moveTo(x,74);ctx.bezierCurveTo(x-18,58,x-31,82,x,107);ctx.bezierCurveTo(x+31,82,x+18,58,x,74);if(i<game.lives)ctx.fill();else ctx.stroke()}
       ctx.textAlign='center';
       if(['catch','unicorn','toxic','underwear'].includes(game.reaction)&&game.reactionClock<650){ctx.font='900 34px monospace';const sign=game.lastDelta>=0?'+':'−';ctx.fillText(`${sign}$${Math.abs(game.lastDelta)}`,480,210-game.reactionClock*.05)}
@@ -518,11 +528,12 @@
   function rainDollars(){for(let i=0;i<42;i++)game.dollarRain.push({x:70+Math.random()*(W-140),y:-30-Math.random()*520,vy:.12+Math.random()*.12,drift:(Math.random()-.5)*.035,phase:Math.random()*Math.PI*2,size:22+Math.random()*20,life:3200+Math.random()*900})}
   function burstChampion(){for(let i=0;i<64;i++){const angle=Math.PI*2*i/64+(Math.random()-.5)*.16,speed=.13+Math.random()*.19;game.championBurst.push({kind:i%3?'star':'dollar',x:480+Math.cos(angle)*38,y:345+Math.sin(angle)*46,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-.025,rot:Math.random()*Math.PI*2,vr:(Math.random()-.5)*.018,size:5+Math.random()*7,life:850+Math.random()*650})}}
   function burstPoop(){for(let i=0;i<18;i++){const angle=-Math.PI*.92+Math.random()*Math.PI*.84,speed=.13+Math.random()*.18;game.poopBurst.push({x:480+(Math.random()-.5)*45,y:365+(Math.random()-.5)*55,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-.05,rot:Math.random()*Math.PI*2,vr:(Math.random()-.5)*.012,size:7+Math.random()*6,life:850+Math.random()*550})}}
+  function burstSuccessWords(){const words=['УСПЕХ','РОСТ ПРОДАЖ','ДОХОДЫ','РАСХОДЫ','БАННЕРЫ','CTR','CPC','ИМИДЖ'];for(let i=0;i<16;i++){const angle=Math.PI*2*i/16+(Math.random()-.5)*.22,speed=.09+Math.random()*.13;game.wordBurst.push({text:words[i%words.length],x:480+Math.cos(angle)*32,y:340+Math.sin(angle)*45,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-.025,rot:(Math.random()-.5)*.32,size:13.5+Math.random()*6,life:900+Math.random()*450})}}
   function showHype(lines){game.hypeText=lines[Math.floor(Math.random()*lines.length)];game.hypeClock=0}
   function activateUnderwearEffect(){game.underwearEffect.active=true;game.underwearEffect.remainingMs=game.underwearEffect.durationMs;showHype(underwearLines.activate);beep('underwearOn')}
   function deactivateUnderwearEffect(playSound=true){if(!game.underwearEffect.active)return;game.underwearEffect.active=false;game.underwearEffect.remainingMs=0;if(playSound){showHype(underwearLines.deactivate);beep('underwearOff')}}
   function updateUnderwearEffect(dt){if(!game.underwearEffect.active)return;game.underwearEffect.remainingMs=Math.max(0,game.underwearEffect.remainingMs-dt);if(game.underwearEffect.remainingMs===0)deactivateUnderwearEffect()}
-  function rollItemType(){const roll=Math.random();return roll<ITEM_CHANCES.unicorn?'unicorn':roll<ITEM_CHANCES.unicorn+ITEM_CHANCES.toxic?'toxic':'startup'}
+  function rollItemType(){const progress=clamp(game.playTime/DIFFICULTY_RAMP_MS,0,1),ramp=progress*progress*(3-2*progress),heartChance=ITEM_CHANCES.heartStart+ramp*(ITEM_CHANCES.heartEnd-ITEM_CHANCES.heartStart),roll=Math.random();return roll<heartChance?'heart':roll<heartChance+ITEM_CHANCES.unicorn?'unicorn':roll<heartChance+ITEM_CHANCES.unicorn+ITEM_CHANCES.toxic?'toxic':'startup'}
   function formatTime(ms){const seconds=Math.floor(ms/1000),minutes=Math.floor(seconds/60);return `${String(minutes).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`}
   function showNextAchievement(){if(game.achievement!==null||!game.achievementQueue.length)return;game.achievement=game.achievementQueue.shift();game.achievementClock=0;game.hypeText='';game.hypeClock=0;beep('achievement')}
   function unlockAchievement(index){if(game.achievements[index])return false;game.achievements[index]=true;game.achievementQueue.push(index);game.hypeText='';game.hypeClock=0;showNextAchievement();return true}
@@ -534,11 +545,12 @@
   function catchItem(item){
     const [x,y]=pathPoint(item.lane,item.progress);
     const type=item.type||'startup';
-    game.lastDelta=type==='unicorn'?1000:type==='toxic'?-2000:200;
+    game.lastDelta=type==='unicorn'?1000:type==='toxic'?-2000:type==='heart'?0:200;
     const flightElapsed=Math.max(0,item.age-item.releaseAt),rotation=itemAnimation(item,flightElapsed).rotation;
     game.score+=game.lastDelta;game.reaction=type==='startup'?'catch':type;game.reactionClock=0;game.catchAnim={...item,upper:item.lane===0||item.lane===2,x,y,t:0,flightElapsed,rotation};
     if(type==='toxic'){const lostWhileBlind=game.underwearEffect.active;game.catchStreak=0;game.agileStreak=0;game.pivotLanes=[];game.movedSinceCatch=false;game.lives=Math.max(0,game.lives-1);markOneLife();game.missLane=item.lane;game.message='ТОКСИЧНЫЙ АКТИВ!';game.danceQueued=false;burstPoop();showHype(olegLines.toxic);if(game.lives===0){triggerGameover(lostWhileBlind?'miss':'toxic');return}deactivateUnderwearEffect();beep('toxic');return}
     if(type==='underwear'){game.movedSinceCatch=false;game.message='ТРУСЫ НА ГОЛОВЕ!';game.danceQueued=false;beep('catch');activateUnderwearEffect();return}
+    if(type==='heart'){game.movedSinceCatch=false;game.lives=Math.min(3,game.lives+1);if(game.lives>1)game.oneLifeSince=null;game.message='ЖИЗНЬ ВЕРНУЛАСЬ!';queueRandomDance();burstSuccessWords();showHype(olegLines.heart);beep('heart');return}
     let achievementUnlocked=game.score>=10000&&unlockAchievement(10);
     if(type==='startup'){
       game.caughtBoxes++;game.catchStreak++;
@@ -553,7 +565,7 @@
     celebrate();if(!achievementUnlocked)beep('catch');
   }
   function missItem(item){
-    if(item.type==='toxic'||item.type==='underwear')return;
+    if(item.type==='toxic'||item.type==='underwear'||item.type==='heart')return;
     const streak=game.catchStreak;let achievementUnlocked=false;game.catchStreak=0;game.agileStreak=0;game.pivotLanes=[];game.movedSinceCatch=false;if((item.type||'startup')==='startup'){game.missedBoxes++;if(streak>=20)achievementUnlocked=unlockAchievement(0)||achievementUnlocked;if(item.isFirstStartup)achievementUnlocked=unlockAchievement(7)||achievementUnlocked}game.lives--;markOneLife();game.reaction='miss';game.reactionClock=0;game.catchAnim=null;game.missLane=item.lane;game.message='КАК ЖЕ ТАК, ОЛЕГ?!';smash(item.lane);if(game.lives<=0){triggerGameover();return}if(!achievementUnlocked)beep('miss');
     deactivateUnderwearEffect();
   }
@@ -571,6 +583,7 @@
     game.reactionClock+=dt;if(game.catchAnim)game.catchAnim.t+=dt;
     if(game.reaction==='catch'&&game.reactionClock>900){game.reaction=game.danceQueued?'dance':'idle';game.reactionClock=0;game.catchAnim=null;if(game.danceQueued)beep('dance');game.danceQueued=false;game.message='ИГРА'}
     else if(game.reaction==='unicorn'&&game.reactionClock>1250){game.reaction='dance';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА';beep('dance')}
+    else if(game.reaction==='heart'&&game.reactionClock>1100){game.reaction='dance';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА';beep('dance')}
     else if((game.reaction==='miss'&&game.reactionClock>1050)||(game.reaction==='toxic'&&game.reactionClock>1100)||(game.reaction==='underwear'&&game.reactionClock>900)||(game.reaction==='dance'&&game.reactionClock>DANCE_DURATION_MS)){game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.message='ИГРА'}
     const progress=clamp(game.playTime/DIFFICULTY_RAMP_MS,0,1),ramp=progress*progress*(3-2*progress);
     const speed=FLIGHT_SPEED_START+ramp*(FLIGHT_SPEED_END-FLIGHT_SPEED_START);spawnClock+=dt;
@@ -589,7 +602,7 @@
   function frame(now){const dt=Math.min(40,now-last);last=now;update(dt);draw(dt);requestAnimationFrame(frame)}
 
   function start(){if(!assetsReady)return;game=fresh();game.running=true;game.message='ИГРА';spawnClock=9999;overlay.classList.add('hidden');pauseButton.textContent='ПАУЗА';beep('start')}
-  function interruptReaction(){if(!['miss','toxic','underwear','dance'].includes(game.reaction))return;game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА'}
+  function interruptReaction(){if(!['miss','toxic','underwear','heart','dance'].includes(game.reaction))return;game.reaction='idle';game.reactionClock=0;game.catchAnim=null;game.danceQueued=false;game.message='ИГРА'}
   function choose(lane){if(!game.running||game.paused)return;interruptReaction();if(lane!==game.lane)game.movedSinceCatch=true;game.lane=lane;laneButtons.forEach(b=>b.classList.toggle('active',+b.dataset.lane===lane));const ready=game.items.filter(item=>!item.rejected&&item.lane===lane&&item.progress>=CATCH_START&&item.progress<=CATCH_END).sort((a,b)=>b.progress-a.progress)[0];if(ready){catchItem(ready);game.items=game.items.filter(item=>item!==ready)}else beep('move')}
   function chooseButton(requestedLane){choose(game.underwearEffect.active?3-requestedLane:requestedLane)}
   function move(direction){

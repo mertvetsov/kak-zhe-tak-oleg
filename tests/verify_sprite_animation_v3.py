@@ -16,6 +16,7 @@ ASSETS = {
     "item-box-toxic-6-frames-v3.png": (2048, 341, 6),
     "item-unicorn-6-frames-v3.png": (2048, 341, 6),
     "item-dirty-briefs-6x512.png": (3072, 512, 6),
+    "item-heart-6-frames.png": (3072, 512, 6),
     "oleg-left-low-dirty-briefs.png": (988, 1592, 1),
     "oleg-left-low-box-dirty-briefs.png": (988, 1591, 1),
     "oleg-left-up-dirty-briefs.png": (988, 1591, 1),
@@ -38,9 +39,11 @@ def main() -> None:
     game = (ROOT / "game.js").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/pr-preview.yml").read_text(encoding="utf-8")
     underwear_lines = json.loads((ROOT / "resources" / "underwear-exclamations.json").read_text(encoding="utf-8"))
+    oleg_lines = json.loads((ROOT / "resources" / "oleg-exclamations.json").read_text(encoding="utf-8"))
     assert set(underwear_lines) == {"activate", "deactivate"}
     assert all(len(underwear_lines[group]) == 3 for group in underwear_lines)
     assert all(isinstance(line, str) and line for group in underwear_lines.values() for line in group)
+    assert "heart" in oleg_lines and all(isinstance(line, str) and line for line in oleg_lines["heart"])
     background = ROOT / "assets" / "oleg-new-background-green.png"
     assert png_header(background)[:2] == (1584, 993), "new background dimensions"
     assert "assets/oleg-new-background-green.png" in game, "new background not connected"
@@ -69,6 +72,10 @@ def main() -> None:
     assert "scale: .8" in game and "scale: .65" in game
     assert "baseSize: 292" in game and "baseSize: 341" in game
     assert "mode: 'once-hold'" in game
+    assert "heart: { mode: 'open-loop'" in game
+    assert "rawFrame<4?rawFrame:4+(rawFrame-4)%2" in game
+    assert "const ITEM_CHANCES = { heartStart:.10, heartEnd:.03" in game
+    assert "heartChance=ITEM_CHANCES.heartStart+ramp*(ITEM_CHANCES.heartEnd-ITEM_CHANCES.heartStart)" in game
     assert "holdSpin: .0032" in game
     assert "(config.holdSpin-config.spin)*elapsed*elapsed/(2*duration)" in game
     assert "a.type==='toxic'?itemAnimation(a,a.flightElapsed+a.t).rotation" in game
@@ -99,8 +106,8 @@ def main() -> None:
     assert "showHype(underwearLines.deactivate);beep('underwearOff')" in game
     assert "game.underwearEffect.remainingMs=Math.max(0,game.underwearEffect.remainingMs-dt)" in game
     assert "deactivateUnderwearEffect(false);game.lives=0" in game
-    assert "if(item.type==='toxic'||item.type==='underwear')return" in game
-    assert "['miss','toxic','underwear','dance'].includes(game.reaction)" in game
+    assert "if(item.type==='toxic'||item.type==='underwear'||item.type==='heart')return" in game
+    assert "['miss','toxic','underwear','heart','dance'].includes(game.reaction)" in game
     assert "function choose(lane){if(!game.running||game.paused)return;interruptReaction();if(lane!==game.lane)" in game
     assert game.count("pathPoint(item.lane,item.progress)") == 2
     assert "const CATCH_START = .70" in game and "const CATCH_END = .84" in game
